@@ -10,55 +10,38 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-
-        DB::table('lokasi_kantor')->insert([
-            [
-                'nama_kantor' => 'Notis Digital',
-                'alamat' => 'Jln. Kalimantan No. 1, Jember',
-                'latitude' => -8.172110,
-                'longitude' => 113.700550,
-                'radius_meter' => 200,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'nama_kantor' => 'Curah Manis Studio',
-                'alamat' => 'Jln. Mastrip, Jember',
-                'latitude' => -8.172110,
-                'longitude' => 113.700550,
-                'radius_meter' => 200,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        ]);
-
-        User::factory(10)->create([
-            'id_kantor' => 1,
-        ]);
-
-        User::factory(15)->create([
-            'id_kantor' => 2,
-        ]);
-
-        User::factory()->create([
-            'nama_lengkap' => 'Julian (Super Admin)',
-            'email' => 'julian@admin.com',
-            'password' => bcrypt('password'),
-            'divisi' => 'IT',
-            'jabatan' => 'Manager',
-            'id_kantor' => 1,
-        ]);
-
+        // Panggil MasterDataSeeder terlebih dahulu untuk data dasar (Divisi, Jabatan, Kantor, Role, User Admin)
         $this->call([
             MasterDataSeeder::class,
+        ]);
+
+        // Tambahan data demo jika diperlukan (Opsional)
+        $kantor = \App\Models\Kantor::first();
+        $divisi = \App\Models\Divisi::first();
+        $jabatan = \App\Models\Jabatan::where('nama_jabatan', 'Staff')->first() ?? \App\Models\Jabatan::first();
+
+        $users = User::factory(5)->create([
+            'id_kantor' => $kantor->id_kantor,
+            'id_divisi' => $divisi->id_divisi,
+            'id_jabatan' => $jabatan->id_jabatan,
+        ]);
+
+        $rolePegawai = \App\Models\Role::where('nama_role', 'pegawai')->first();
+        if ($rolePegawai) {
+            foreach ($users as $user) {
+                $user->roles()->attach($rolePegawai->id_role);
+            }
+        }
+
+        // Panggil seeder fitur lainnya
+        $this->call([
             PermissionSeeder::class,
             PresensiStatusSeeder::class,
             PresensiSeeder::class,
-
             JenisIzinSeeder::class,
             StatusPengajuanSeeder::class,
-
             PengajuanIzinSeeder::class,
+            SuperAdminSeeder::class, // Menambah super administrator dengan role admin
         ]);
     }
 }

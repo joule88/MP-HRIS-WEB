@@ -21,10 +21,8 @@ class PengajuanIzinSeeder extends Seeder
 
         foreach ($users as $user) {
             try {
-
-                $idJenis = rand(1, 3);
-
-                $idStatus = rand(1, 3);
+                $idJenis = DB::table('jenis_izin')->inRandomOrder()->first()->id_jenis_izin;
+                $idStatus = DB::table('status_pengajuan')->inRandomOrder()->first()->id_status;
 
                 $tglMulai = now()->addDays(rand(-10, 10));
                 $tglSelesai = (clone $tglMulai)->addDays(rand(1, 3));

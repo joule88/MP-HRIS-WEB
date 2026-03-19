@@ -40,12 +40,15 @@ class PresensiSeeder extends Seeder
                 $randomMinutes = rand(-10, 30);
                 $jamMasuk = $shiftStart->copy()->addMinutes($randomMinutes);
 
-                $status = 1;
+                $idTepat = DB::table('status_presensi')->where('nama_status', 'Tepat Waktu')->value('id_status') ?? 1;
+                $idTelat = DB::table('status_presensi')->where('nama_status', 'Terlambat')->value('id_status') ?? 2;
+
+                $status = $idTepat;
                 $alasan = null;
                 $toleransi = 10;
 
                 if ($randomMinutes > $toleransi) {
-                    $status = 2;
+                    $status = $idTelat;
                     $alasan = 'Terlambat ' . ($randomMinutes) . ' menit (Dummy Data)';
                 }
 

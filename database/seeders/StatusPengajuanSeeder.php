@@ -9,13 +9,12 @@ class StatusPengajuanSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('status_pengajuan')->delete();
-
-        DB::table('status_pengajuan')->insert([
-
-            ['id_status' => 1, 'nama_status' => 'Disetujui'],
-            ['id_status' => 2, 'nama_status' => 'Pending'],
-            ['id_status' => 3, 'nama_status' => 'Ditolak'],
-        ]);
+        $statuses = ['Disetujui', 'Pending', 'Ditolak'];
+        foreach ($statuses as $status) {
+            DB::table('status_pengajuan')->updateOrInsert(
+                ['nama_status' => $status],
+                ['updated_at' => now(), 'created_at' => now()]
+            );
+        }
     }
 }

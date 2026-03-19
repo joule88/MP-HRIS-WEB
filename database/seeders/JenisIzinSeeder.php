@@ -9,13 +9,12 @@ class JenisIzinSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('jenis_izin')->delete();
-
-        DB::table('jenis_izin')->insert([
-
-            ['id_jenis_izin' => 1, 'nama_izin' => 'Sakit'],
-            ['id_jenis_izin' => 2, 'nama_izin' => 'Cuti'],
-            ['id_jenis_izin' => 3, 'nama_izin' => 'Izin'],
-        ]);
+        $types = ['Sakit', 'Cuti', 'Izin'];
+        foreach ($types as $type) {
+            DB::table('jenis_izin')->updateOrInsert(
+                ['nama_izin' => $type],
+                ['updated_at' => now(), 'created_at' => now()]
+            );
+        }
     }
 }
