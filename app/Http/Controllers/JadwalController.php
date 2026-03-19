@@ -17,14 +17,21 @@ class JadwalController extends Controller
 {
     public function index()
     {
-        $kantor = Kantor::all();
+        $user = Auth::user();
+        $isGlobalAdmin = $user->isGlobalAdmin();
+
+        $kantor = $isGlobalAdmin ? Kantor::all() : Kantor::where('id_kantor', $user->id_kantor)->get();
         $divisi = Divisi::all();
         $shifts = ShiftKerja::all()->map(function ($s) {
             $s->color = $this->getShiftColor($s->nama_shift);
             return $s;
         });
 
-        $pegawai = User::where('status_aktif', 1)->orderBy('nama_lengkap', 'asc')->get();
+        $pegawaiQuery = User::where('status_aktif', 1);
+        if (!$isGlobalAdmin) {
+            $pegawaiQuery->where('id_kantor', $user->id_kantor);
+        }
+        $pegawai = $pegawaiQuery->orderBy('nama_lengkap', 'asc')->get();
 
         return view('jadwal.index', compact('kantor', 'divisi', 'shifts', 'pegawai'));
     }
@@ -34,14 +41,30 @@ class JadwalController extends Controller
         $start = Carbon::parse($request->start)->format('Y-m-d');
         $end = Carbon::parse($request->end)->format('Y-m-d');
 
+        $user = Auth::user();
+        $isGlobalAdmin = $user->isGlobalAdmin();
+
         $query = JadwalKerja::with(['user.kantor', 'user.jabatan', 'shift'])
             ->whereDate('tanggal', '>=', $start)
             ->whereDate('tanggal', '<=', $end);
 
-        if ($request->filled('filter_kantor') && $request->filter_kantor != "") {
-            $query->whereHas('user', function ($q) use ($request) {
-                $q->where('id_kantor', $request->filter_kantor);
+        if (!$isGlobalAdmin) {
+            $query->whereHas('user', function ($q) use ($user) {
+                $q->where('id_kantor', $user->id_kantor);
             });
+        }
+
+        if ($request->filled('filter_kantor') && $request->filter_kantor != "") {
+            // Jika bukan admin, pastikan filter_kantor sesuai dengan kantornya
+            if (!$isGlobalAdmin && $request->filter_kantor != $user->id_kantor) {
+                $query->whereHas('user', function ($q) use ($user) {
+                    $q->where('id_kantor', $user->id_kantor);
+                });
+            } else {
+                $query->whereHas('user', function ($q) use ($request) {
+                    $q->where('id_kantor', $request->filter_kantor);
+                });
+            }
         }
 
         if ($request->filled('filter_divisi') && $request->filter_divisi != "") {
@@ -129,12 +152,12 @@ class JadwalController extends Controller
 
         $hariLibursQuery = \App\Models\HariLibur::whereBetween('tanggal', [$start, $end]);
         if ($request->filled('filter_kantor') && $request->filter_kantor != "") {
-            $hariLibursQuery->where(function($q) use ($request) {
+            $hariLibursQuery->where(function ($q) use ($request) {
                 $q->whereNull('id_kantor')->orWhere('id_kantor', $request->filter_kantor);
             });
         }
         $hariLiburs = $hariLibursQuery->get();
-        
+
         foreach ($hariLiburs as $hl) {
             $events[] = [
                 'id' => 'libur-' . $hl->id,
@@ -173,14 +196,18 @@ class JadwalController extends Controller
 
     public function create()
     {
+        $user = Auth::user();
+        $isGlobalAdmin = $user->isGlobalAdmin();
+
         $shifts = ShiftKerja::all();
-        $kantor = Kantor::all();
+        $kantor = $isGlobalAdmin ? Kantor::all() : Kantor::where('id_kantor', $user->id_kantor)->get();
         $divisi = Divisi::all();
 
-        $pegawai = User::where('status_aktif', 1)
-            ->with(['kantor', 'jabatan'])
-            ->orderBy('nama_lengkap', 'asc')
-            ->get();
+        $pegawaiQuery = User::where('status_aktif', 1)->with(['kantor', 'jabatan']);
+        if (!$isGlobalAdmin) {
+            $pegawaiQuery->where('id_kantor', $user->id_kantor);
+        }
+        $pegawai = $pegawaiQuery->orderBy('nama_lengkap', 'asc')->get();
 
         return view('jadwal.create', compact('shifts', 'pegawai', 'kantor', 'divisi'));
     }
@@ -194,6 +221,20 @@ class JadwalController extends Controller
             'user_ids' => 'required|array',
             'user_ids.*' => 'exists:users,id',
         ]);
+
+        $user = Auth::user();
+        $isGlobalAdmin = $user->isGlobalAdmin();
+
+        // Validasi Kantor (Security Check)
+        if (!$isGlobalAdmin) {
+            $invalidUsers = User::whereIn('id', $request->user_ids)
+                ->where('id_kantor', '!=', $user->id_kantor)
+                ->exists();
+
+            if ($invalidUsers) {
+                return redirect()->back()->with('error', 'Anda tidak diizinkan membuat jadwal untuk karyawan di luar kantor Anda.');
+            }
+        }
 
         $startDate = Carbon::parse($request->tanggal_mulai);
         $endDate = Carbon::parse($request->tanggal_selesai);
@@ -216,10 +257,10 @@ class JadwalController extends Controller
 
                     foreach ($userIds as $userId) {
                         $user = $usersData->get($userId);
-                        $isLibur = $libursDate->contains(function($libur) use ($user) {
-                             return is_null($libur->id_kantor) || ($user && $libur->id_kantor == $user->id_kantor);
+                        $isLibur = $libursDate->contains(function ($libur) use ($user) {
+                            return is_null($libur->id_kantor) || ($user && $libur->id_kantor == $user->id_kantor);
                         });
-                        
+
                         if ($isLibur) {
                             continue;
                         }
@@ -249,7 +290,6 @@ class JadwalController extends Controller
             }
 
             return redirect()->route('jadwal.index')->with('success', $message);
-
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
@@ -262,6 +302,13 @@ class JadwalController extends Controller
         ]);
 
         $jadwal = JadwalKerja::findOrFail($id);
+        $user = Auth::user();
+
+        // Security Check
+        if (!$user->isGlobalAdmin() && $jadwal->user->id_kantor != $user->id_kantor) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak diizinkan mengubah jadwal karyawan di luar kantor Anda.'], 403);
+        }
+
         $warningMsg = null;
 
         try {
@@ -284,7 +331,6 @@ class JadwalController extends Controller
                 'success' => true,
                 'message' => $warningMsg ?? 'Jadwal berhasil diperbarui'
             ]);
-
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -293,6 +339,13 @@ class JadwalController extends Controller
     public function destroy($id)
     {
         $jadwal = JadwalKerja::findOrFail($id);
+        $user = Auth::user();
+
+        // Security Check
+        if (!$user->isGlobalAdmin() && $jadwal->user->id_kantor != $user->id_kantor) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak diizinkan menghapus jadwal karyawan di luar kantor Anda.'], 403);
+        }
+
         $jadwal->delete();
 
         return response()->json(['success' => true, 'message' => 'Jadwal berhasil dihapus']);
@@ -306,6 +359,19 @@ class JadwalController extends Controller
             'user_ids' => 'required|array',
             'user_ids.*' => 'exists:users,id',
         ]);
+
+        $user = Auth::user();
+        $isGlobalAdmin = $user->isGlobalAdmin();
+
+        if (!$isGlobalAdmin) {
+            $invalidUsers = User::whereIn('id', $request->user_ids)
+                ->where('id_kantor', '!=', $user->id_kantor)
+                ->exists();
+
+            if ($invalidUsers) {
+                return redirect()->back()->with('error', 'Anda tidak diizinkan menghapus jadwal karyawan di luar kantor Anda.');
+            }
+        }
 
         try {
             DB::transaction(function () use ($request) {

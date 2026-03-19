@@ -19,8 +19,16 @@ class PengajuanIzinController extends Controller
     public function index(Request $request)
     {
         $statusId = $request->get('status');
+        $user = Auth::user();
+        $isGlobalAdmin = $user->isGlobalAdmin();
 
         $query = PengajuanIzin::with(['user', 'jenisIzin', 'statusPengajuan', 'suratIzin']);
+
+        if (!$isGlobalAdmin) {
+            $query->whereHas('user', function ($q) use ($user) {
+                $q->where('id_kantor', $user->id_kantor);
+            });
+        }
 
         if ($statusId) {
             $query->where('id_status', $statusId);
@@ -121,7 +129,13 @@ class PengajuanIzinController extends Controller
         try {
             DB::beginTransaction();
 
-            $izin = PengajuanIzin::with('jenisIzin')->findOrFail($id);
+            $izin = PengajuanIzin::with(['jenisIzin', 'user'])->findOrFail($id);
+            $user = Auth::user();
+
+            // Security Check
+            if (!$user->isGlobalAdmin() && $izin->user->id_kantor != $user->id_kantor) {
+                return redirect()->back()->with('error', 'Anda tidak diizinkan menyetujui pengajuan dari kantor lain.');
+            }
 
             if ($izin->id_status !== 1) {
                 return redirect()->back()->with('error', 'Pengajuan ini sudah diproses sebelumnya.');
@@ -178,7 +192,13 @@ class PengajuanIzinController extends Controller
 
     public function reject(Request $request, $id)
     {
-        $izin = PengajuanIzin::findOrFail($id);
+        $izin = PengajuanIzin::with('user')->findOrFail($id);
+        $user = Auth::user();
+
+        // Security Check
+        if (!$user->isGlobalAdmin() && $izin->user->id_kantor != $user->id_kantor) {
+            return redirect()->back()->with('error', 'Anda tidak diizinkan menolak pengajuan dari kantor lain.');
+        }
 
         if ($izin->id_status !== 1) {
             return redirect()->back()->with('error', 'Pengajuan ini sudah diproses sebelumnya.');

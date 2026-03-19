@@ -17,17 +17,32 @@ class PresensiController extends Controller
 {
     public function index(Request $request)
     {
+        $user = Auth::user();
+        $isGlobalAdmin = $user->isGlobalAdmin();
+
         $tanggal = $request->get('tanggal', Carbon::today()->format('Y-m-d'));
         $divisiId = $request->get('divisi_id');
 
-        $pendingDates = Presensi::where('id_validasi', 2)
-            ->selectRaw('DATE(tanggal) as tgl, COUNT(*) as jumlah')
+        $pendingQuery = Presensi::where('id_validasi', 2);
+        if (!$isGlobalAdmin) {
+            $pendingQuery->whereHas('user', function ($q) use ($user) {
+                $q->where('id_kantor', $user->id_kantor);
+            });
+        }
+
+        $pendingDates = $pendingQuery->selectRaw('DATE(tanggal) as tgl, COUNT(*) as jumlah')
             ->groupBy('tgl')
             ->orderBy('tgl', 'desc')
             ->get();
 
         $query = Presensi::with(['user.jabatan', 'user.kantor'])
             ->whereDate('tanggal', $tanggal);
+
+        if (!$isGlobalAdmin) {
+            $query->whereHas('user', function ($q) use ($user) {
+                $q->where('id_kantor', $user->id_kantor);
+            });
+        }
 
         if ($divisiId) {
             $query->whereHas('user', function ($q) use ($divisiId) {
@@ -109,7 +124,7 @@ class PresensiController extends Controller
 
             $item->jarak_masuk = null;
             if ($item->user && $item->user->kantor && $item->lat_masuk && $item->lon_masuk) {
-                $item->jarak_masuk = app(self::class)->calculateDistance(
+                $item->jarak_masuk = $this->calculateDistance(
                     $item->lat_masuk,
                     $item->lon_masuk,
                     $item->user->kantor->latitude,
@@ -131,7 +146,13 @@ class PresensiController extends Controller
 
     public function approve($id)
     {
-        $presensi = Presensi::findOrFail($id);
+        $presensi = Presensi::with('user')->findOrFail($id);
+        $user = Auth::user();
+
+        if (!$user->isGlobalAdmin() && $presensi->user->id_kantor != $user->id_kantor) {
+            return redirect()->back()->with('error', 'Anda tidak diizinkan menyetujui presensi dari kantor lain.');
+        }
+
         $presensi->update(['id_validasi' => 1]);
 
         return redirect()->back()->with('success', 'Presensi berhasil disetujui.');
@@ -139,7 +160,13 @@ class PresensiController extends Controller
 
     public function reject($id)
     {
-        $presensi = Presensi::findOrFail($id);
+        $presensi = Presensi::with('user')->findOrFail($id);
+        $user = Auth::user();
+
+        if (!$user->isGlobalAdmin() && $presensi->user->id_kantor != $user->id_kantor) {
+            return redirect()->back()->with('error', 'Anda tidak diizinkan menolak presensi dari kantor lain.');
+        }
+
         $presensi->update(['id_validasi' => 3]);
 
         return redirect()->back()->with('success', 'Presensi berhasil ditolak.');
@@ -151,6 +178,19 @@ class PresensiController extends Controller
             'presensi_ids' => 'required|array',
             'action' => 'required|in:approve,reject'
         ]);
+
+        $user = Auth::user();
+        if (!$user->isGlobalAdmin()) {
+            $invalidCount = Presensi::whereIn('id_presensi', $request->presensi_ids)
+                ->whereHas('user', function ($q) use ($user) {
+                    $q->where('id_kantor', '!=', $user->id_kantor);
+                })
+                ->count();
+
+            if ($invalidCount > 0) {
+                return redirect()->back()->with('error', 'Terdapat data dari kantor lain dalam pilihan Anda.');
+            }
+        }
 
         $statusValidasi = $request->action == 'approve' ? 1 : 3;
 
@@ -164,9 +204,17 @@ class PresensiController extends Controller
 
     public function create()
     {
-        $pegawai = \App\Models\User::with('divisi')
-            ->orderBy('nama_lengkap', 'asc')
-            ->get();
+        $user = Auth::user();
+        $isGlobalAdmin = $user->isGlobalAdmin();
+
+        $pegawaiQuery = \App\Models\User::with('divisi')
+            ->orderBy('nama_lengkap', 'asc');
+
+        if (!$isGlobalAdmin) {
+            $pegawaiQuery->where('id_kantor', $user->id_kantor);
+        }
+
+        $pegawai = $pegawaiQuery->get();
 
         $statuses = \Illuminate\Support\Facades\DB::table('status_presensi')->get();
 
@@ -213,6 +261,12 @@ class PresensiController extends Controller
     public function edit($id)
     {
         $presensi = Presensi::with('user.divisi')->findOrFail($id);
+        $user = Auth::user();
+
+        if (!$user->isGlobalAdmin() && $presensi->user->id_kantor != $user->id_kantor) {
+            abort(403, 'Anda tidak diizinkan mengedit presensi dari kantor lain.');
+        }
+
         $statuses = \Illuminate\Support\Facades\DB::table('status_presensi')->get();
 
         return view('presensi.edit', compact('presensi', 'statuses'));
@@ -220,6 +274,13 @@ class PresensiController extends Controller
 
     public function updateManual(Request $request, $id)
     {
+        $presensi = Presensi::with('user')->findOrFail($id);
+        $user = Auth::user();
+
+        if (!$user->isGlobalAdmin() && $presensi->user->id_kantor != $user->id_kantor) {
+            return redirect()->back()->with('error', 'Anda tidak diizinkan mengoreksi presensi dari kantor lain.');
+        }
+
         $request->validate([
             'id_status' => 'required|exists:status_presensi,id_status',
             'jam_masuk' => [

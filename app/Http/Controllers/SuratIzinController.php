@@ -15,7 +15,16 @@ class SuratIzinController extends Controller
 {
     public function index(Request $request)
     {
+        $user = Auth::user();
+        $isGlobalAdmin = $user->isGlobalAdmin();
+
         $query = SuratIzin::with(['user', 'pengajuanIzin.jenisIzin', 'approvals.approver']);
+
+        if (!$isGlobalAdmin) {
+            $query->whereHas('user', function ($q) use ($user) {
+                $q->where('id_kantor', $user->id_kantor);
+            });
+        }
 
         if ($request->filled('status')) {
             $query->where('status_surat', $request->status);
@@ -44,17 +53,19 @@ class SuratIzinController extends Controller
         ])->findOrFail($id);
 
         $user = Auth::user();
+        $isGlobalAdmin = $user->isGlobalAdmin();
+
+        // Security Check: Office Isolation
+        if (!$isGlobalAdmin && $surat->user->id_kantor != $user->id_kantor) {
+            abort(403, 'Anda tidak diizinkan mengakses data dari kantor lain.');
+        }
+
         $canApprove = false;
-        $tahapApproval = null;
 
-        $isSuperAdmin = $user->roles->contains(function ($role) {
-            return in_array(strtolower($role->nama_role), ['admin', 'super admin', 'super_admin']);
-        });
-
-        if ($surat->status_surat === 'menunggu_manajer' && ($user->roles->contains('nama_role', 'manajer') || $isSuperAdmin)) {
+        if ($surat->status_surat === 'menunggu_manajer' && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
             $canApprove = true;
             $tahapApproval = 1;
-        } elseif ($surat->status_surat === 'menunggu_hrd' && ($user->roles->contains('nama_role', 'hrd') || $isSuperAdmin)) {
+        } elseif ($surat->status_surat === 'menunggu_hrd' && ($user->roles->contains('nama_role', 'hrd') || $isGlobalAdmin)) {
             $canApprove = true;
             $tahapApproval = 2;
         }
@@ -67,21 +78,24 @@ class SuratIzinController extends Controller
     public function approve(Request $request, $id)
     {
         try {
-            $surat = SuratIzin::findOrFail($id);
+            $surat = SuratIzin::with('user')->findOrFail($id);
             $user = Auth::user();
+            $isGlobalAdmin = $user->isGlobalAdmin();
+
+            // Security Check
+            if (!$isGlobalAdmin && $surat->user->id_kantor != $user->id_kantor) {
+                return redirect()->back()->with('error', 'Anda tidak diizinkan menyetujui surat dari karyawan kantor lain.');
+            }
 
             if (in_array($surat->status_surat, ['disetujui', 'ditolak'])) {
                 return redirect()->back()->with('error', 'Surat ini sudah diproses sebelumnya.');
             }
 
             $tahap = null;
-            $isSuperAdmin = $user->roles->contains(function ($role) {
-                return in_array(strtolower($role->nama_role), ['admin', 'super admin', 'super_admin']);
-            });
 
-            if ($surat->status_surat === 'menunggu_manajer' && ($user->roles->contains('nama_role', 'manajer') || $isSuperAdmin)) {
+            if ($surat->status_surat === 'menunggu_manajer' && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
                 $tahap = 1;
-            } elseif ($surat->status_surat === 'menunggu_hrd' && ($user->roles->contains('nama_role', 'hrd') || $isSuperAdmin)) {
+            } elseif ($surat->status_surat === 'menunggu_hrd' && ($user->roles->contains('nama_role', 'hrd') || $isGlobalAdmin)) {
                 $tahap = 2;
             }
 
@@ -126,21 +140,24 @@ class SuratIzinController extends Controller
     public function reject(Request $request, $id)
     {
         try {
-            $surat = SuratIzin::findOrFail($id);
+            $surat = SuratIzin::with('user')->findOrFail($id);
             $user = Auth::user();
+            $isGlobalAdmin = $user->isGlobalAdmin();
+
+            // Security Check
+            if (!$isGlobalAdmin && $surat->user->id_kantor != $user->id_kantor) {
+                return redirect()->back()->with('error', 'Anda tidak diizinkan menolak surat dari karyawan kantor lain.');
+            }
 
             if (in_array($surat->status_surat, ['disetujui', 'ditolak'])) {
                 return redirect()->back()->with('error', 'Surat ini sudah diproses sebelumnya.');
             }
 
             $tahap = null;
-            $isSuperAdmin = $user->roles->contains(function ($role) {
-                return in_array(strtolower($role->nama_role), ['admin', 'super admin', 'super_admin']);
-            });
 
-            if ($surat->status_surat === 'menunggu_manajer' && ($user->roles->contains('nama_role', 'manajer') || $isSuperAdmin)) {
+            if ($surat->status_surat === 'menunggu_manajer' && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
                 $tahap = 1;
-            } elseif ($surat->status_surat === 'menunggu_hrd' && ($user->roles->contains('nama_role', 'hrd') || $isSuperAdmin)) {
+            } elseif ($surat->status_surat === 'menunggu_hrd' && ($user->roles->contains('nama_role', 'hrd') || $isGlobalAdmin)) {
                 $tahap = 2;
             }
 

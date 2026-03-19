@@ -61,6 +61,11 @@ Proyek ini mengikuti standar **Clean Code** Laravel dengan pemisahan tanggung ja
    - `<x-button>` & `<x-back-button>`: Tombol aksi.
    - `<x-modal>`: Untuk CRUD Data Master sederhana.
 
+## 🛡️ Quality Assurance (QA) & Testing
+
+Untuk tim QA, silakan merujuk ke dokumen panduan pengujian komprehensif di:
+👉 **[QA_GUIDE.md](file:///c:/xampp/htdocs/mpg-hris/QA_GUIDE.md)**
+
 ## 🔑 Akun Default (Seeder)
 
 - **Super Admin**: `superadmin@mpg.co.id` / `password`
