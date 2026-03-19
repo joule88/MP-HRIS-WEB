@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\PenggunaanPoin;
 use App\Services\PoinService;
+use Illuminate\Support\Facades\Auth;
 
 class JadwalController extends Controller
 {

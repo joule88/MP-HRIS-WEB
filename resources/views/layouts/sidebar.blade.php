@@ -1,4 +1,4 @@
-﻿<aside
+<aside
     :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
     class="fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 flex flex-col h-full transition-transform duration-300 font-sans z-[100] shadow-xl lg:shadow-sm lg:static lg:flex-shrink-0">
 
@@ -15,6 +15,8 @@
             $isAdmin = Auth::user()->roles->contains(function ($role) {
                 return strtolower($role->nama_role) === 'admin';
             });
+            $isSuperAdmin = Auth::user()->isSuperAdmin();
+            $isAdminOrSuperAdmin = Auth::user()->isGlobalAdmin();
         @endphp
 
     <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto no-scrollbar">
@@ -31,7 +33,7 @@
             </a>
         </div>
 
-        @if($isAdmin)
+        @if($isAdminOrSuperAdmin)
         <div class="pt-6 pb-3 px-4 flex items-center gap-3">
             <div class="h-px bg-slate-200 flex-1"></div>
             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Manajemen</span>
@@ -39,6 +41,7 @@
         </div>
 
         <div class="space-y-1">
+        @if($isSuperAdmin)
         <a href="{{ route('face.index') }}"
             class="flex items-center px-4 py-3 rounded-xl transition-all duration-200 group {{ request()->routeIs('face.*') ? 'bg-[#130F26] text-white shadow-lg shadow-[#130F26]/30' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' }}">
             <svg class="w-5 h-5 mr-3 {{ request()->routeIs('face.*') ? 'text-white' : 'text-slate-400 group-hover:text-slate-600' }} group-hover:scale-110 transition-transform duration-300"
@@ -53,6 +56,7 @@
                     class="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $pendingFace }}</span>
             @endif
         </a>
+        @endif
 
         <a href="{{ route('pegawai.index') }}"
             class="flex items-center px-4 py-3 rounded-xl transition-all duration-200 group {{ request()->routeIs('pegawai.*') ? 'bg-[#130F26] text-white shadow-lg shadow-[#130F26]/30' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' }}">
@@ -77,7 +81,7 @@
         </div>
         @endif
 
-        @if($isAdmin)
+        @if($isAdminOrSuperAdmin)
         <div class="pt-6 pb-3 px-4 flex items-center gap-3">
             <div class="h-px bg-slate-200 flex-1"></div>
             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Absensi</span>
@@ -95,7 +99,7 @@
             <span class="font-semibold text-sm">Laporan Kehadiran</span>
         </a>
 
-        @if($isAdmin)
+        @if($isAdminOrSuperAdmin)
         <a href="{{ route('laporan-lembur.index') }}"
             class="flex items-center px-4 py-3 rounded-xl transition-all duration-200 group {{ request()->routeIs('laporan-lembur.*') ? 'bg-[#130F26] text-white shadow-lg shadow-[#130F26]/30' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' }}">
             <svg class="w-5 h-5 mr-3 {{ request()->routeIs('laporan-lembur.*') ? 'text-white' : 'text-slate-400 group-hover:text-slate-600' }} group-hover:scale-110 transition-transform duration-300"
@@ -246,10 +250,12 @@
                     Data Jabatan
                 </a>
 
+                @if($isSuperAdmin)
                 <a href="{{ route('role.index') }}"
                     class="block py-2.5 px-4 text-sm rounded-lg transition-all {{ request()->routeIs('role.*') ? 'bg-slate-100 text-[#130F26] font-bold border-l-4 border-[#130F26]' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50' }}">
                     Data Role
                 </a>
+                @endif
 
                 <a href="{{ route('shift.index') }}"
                     class="block py-2.5 px-4 text-sm rounded-lg transition-all {{ request()->routeIs('shift.*') ? 'bg-slate-100 text-[#130F26] font-bold border-l-4 border-[#130F26]' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50' }}">

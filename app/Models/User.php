@@ -108,6 +108,20 @@ class User extends Authenticatable
         })->exists();
     }
 
+    public function isGlobalAdmin(): bool
+    {
+        return $this->roles->contains(function ($role) {
+            return in_array(strtolower($role->nama_role), ['admin', 'super admin', 'super_admin']);
+        });
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->roles->contains(function ($role) {
+            return in_array(strtolower($role->nama_role), ['super admin', 'super_admin']);
+        });
+    }
+
     public function kantor(): BelongsTo
     {
         return $this->belongsTo(Kantor::class, 'id_kantor', 'id_kantor');

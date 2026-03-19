@@ -42,6 +42,45 @@ class TukarShiftController extends Controller
             $jadwal1 = JadwalKerja::findOrFail($request->id_jadwal_1);
             $jadwal2 = JadwalKerja::findOrFail($request->id_jadwal_2);
 
+            // 1. Validasi kepemilikan jadwal
+            if ($jadwal1->id_user != $request->id_user_1 || $jadwal2->id_user != $request->id_user_2) {
+                return redirect()->back()->withInput()->with('error', 'Data jadwal tidak sesuai dengan pegawai yang dipilih.');
+            }
+
+            // 2. Validasi bentrok jadwal kerja
+            $conflict1 = JadwalKerja::where('id_user', $request->id_user_1)
+                ->where('tanggal', $jadwal2->tanggal)
+                ->where('id_jadwal', '!=', $jadwal1->id_jadwal)
+                ->exists();
+            if ($conflict1) {
+                return redirect()->back()->withInput()->with('error', 'Pegawai Pertama sudah memiliki jadwal kerja lain pada tanggal tujuan (' . $jadwal2->tanggal . ').');
+            }
+
+            $conflict2 = JadwalKerja::where('id_user', $request->id_user_2)
+                ->where('tanggal', $jadwal1->tanggal)
+                ->where('id_jadwal', '!=', $jadwal2->id_jadwal)
+                ->exists();
+            if ($conflict2) {
+                return redirect()->back()->withInput()->with('error', 'Pegawai Kedua sudah memiliki jadwal kerja lain pada tanggal tujuan (' . $jadwal1->tanggal . ').');
+            }
+
+            // 3. Validasi bentrok dengan Penggunaan Poin (Cuti / dll)
+            $poin1 = \App\Models\PenggunaanPoin::where('id_user', $request->id_user_1)
+                ->where('tanggal_penggunaan', $jadwal2->tanggal)
+                ->where('id_status', 2)
+                ->exists();
+            if ($poin1) {
+                return redirect()->back()->withInput()->with('error', 'Pegawai Pertama memiliki riwayat Cuti/Penggunaan Poin pada tanggal tujuan (' . $jadwal2->tanggal . ').');
+            }
+
+            $poin2 = \App\Models\PenggunaanPoin::where('id_user', $request->id_user_2)
+                ->where('tanggal_penggunaan', $jadwal1->tanggal)
+                ->where('id_status', 2)
+                ->exists();
+            if ($poin2) {
+                return redirect()->back()->withInput()->with('error', 'Pegawai Kedua memiliki riwayat Cuti/Penggunaan Poin pada tanggal tujuan (' . $jadwal1->tanggal . ').');
+            }
+
             $tempUser1 = $jadwal1->id_user;
             $jadwal1->id_user = $jadwal2->id_user;
             $jadwal2->id_user = $tempUser1;
