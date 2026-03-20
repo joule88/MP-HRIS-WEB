@@ -12,7 +12,7 @@ class StoreManualPresensiRequest extends FormRequest
     {
 
         return $this->user()->roles->contains(function ($role) {
-             return in_array(strtolower($role->nama_role), ['admin', 'super admin', 'super_admin']);
+             return strtolower($role->nama_role) === 'hrd';
         });
     }
 

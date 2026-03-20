@@ -26,61 +26,62 @@ class MasterDataSeeder extends Seeder
         $kPusat = Kantor::firstOrCreate(
             ['nama_kantor' => 'Kantor Pusat'],
             [
-                'alamat' => 'Jl. Jendral Sudirman No. 1, Jakarta',
-                'latitude' => -6.2088,
+                'alamat'    => 'Jl. Jendral Sudirman No. 1, Jakarta',
+                'latitude'  => -6.2088,
                 'longitude' => 106.8456,
-                'radius' => 200
+                'radius'    => 200
             ]
         );
 
         $kCabang = Kantor::firstOrCreate(
             ['nama_kantor' => 'Curah Manis Studio'],
             [
-                'alamat' => 'Jl. Curah Manis, Malang',
-                'latitude' => -7.9839,
+                'alamat'    => 'Jl. Curah Manis, Malang',
+                'latitude'  => -7.9839,
                 'longitude' => 112.6214,
-                'radius' => 200
+                'radius'    => 200
             ]
         );
 
-        // Roles
-        $roleAdmin = \App\Models\Role::firstOrCreate(['nama_role' => 'admin']);
-        $roleHrd = \App\Models\Role::firstOrCreate(['nama_role' => 'hrd']);
-        $roleManager = \App\Models\Role::firstOrCreate(['nama_role' => 'manager']);
-        $rolePegawai = \App\Models\Role::firstOrCreate(['nama_role' => 'pegawai']);
+        $roleHrd        = \App\Models\Role::firstOrCreate(['nama_role' => 'hrd']);
+        $roleManager    = \App\Models\Role::firstOrCreate(['nama_role' => 'manager']);
+        $roleSupervisor = \App\Models\Role::firstOrCreate(['nama_role' => 'supervisor']);
+        $roleStaff      = \App\Models\Role::firstOrCreate(['nama_role' => 'staff']);
 
-        $admin = User::updateOrCreate(
-            ['email' => 'admin@mpg.co.id'],
+        $hrd = User::updateOrCreate(
+            ['nik' => '999999999'],
             [
-                'nama_lengkap' => 'Super Administrator',
-                'password' => Hash::make('admin123'),
-                'nik' => '999999999',
-                'status_aktif' => 1,
-                'id_divisi' => $divIT->id_divisi,
-                'id_jabatan' => $jabMgr->id_jabatan,
-                'id_kantor' => $kPusat->id_kantor,
+                'nama_lengkap'  => 'HRD Manager',
+                'email'         => 'hrd@mpg.co.id',
+                'password'      => Hash::make('Mpg123!'),
+                'status_aktif'  => 1,
+                'id_divisi'     => $divHR->id_divisi,
+                'id_jabatan'    => $jabMgr->id_jabatan,
+                'id_kantor'     => $kPusat->id_kantor,
                 'tgl_bergabung' => now(),
+                'sisa_cuti'     => 12,
             ]
         );
-        if (!$admin->roles()->where('nama_role', 'admin')->exists()) {
-            $admin->roles()->attach($roleAdmin->id_role);
+        if (!$hrd->roles()->where('nama_role', 'hrd')->exists()) {
+            $hrd->roles()->attach($roleHrd->id_role);
         }
 
         $pegawai = User::updateOrCreate(
             ['email' => 'budi@mpg.co.id'],
             [
-                'nama_lengkap' => 'Budi Santoso',
-                'password' => Hash::make('Mpg123!'),
-                'nik' => '350712345678',
-                'status_aktif' => 1,
-                'id_divisi' => $divHR->id_divisi,
-                'id_jabatan' => $jabStf->id_jabatan,
-                'id_kantor' => $kCabang->id_kantor,
+                'nama_lengkap'  => 'Budi Santoso',
+                'password'      => Hash::make('Mpg123!'),
+                'nik'           => '350712345678',
+                'status_aktif'  => 1,
+                'id_divisi'     => $divHR->id_divisi,
+                'id_jabatan'    => $jabStf->id_jabatan,
+                'id_kantor'     => $kCabang->id_kantor,
                 'tgl_bergabung' => now(),
+                'sisa_cuti'     => 12,
             ]
         );
-        if (!$pegawai->roles()->where('nama_role', 'pegawai')->exists()) {
-            $pegawai->roles()->attach($rolePegawai->id_role);
+        if (!$pegawai->roles()->where('nama_role', 'staff')->exists()) {
+            $pegawai->roles()->attach($roleStaff->id_role);
         }
     }
 }

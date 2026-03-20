@@ -74,11 +74,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/tanda-tangan', [SignatureController::class, 'store'])->name('signature.store');
 });
 
-Route::middleware(['auth', 'role:admin'])->group(function () {
+Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::resource('divisi', DivisiController::class)->except(['create', 'edit', 'show']);
     Route::resource('jabatan', JabatanController::class);
     Route::resource('kantor', KantorController::class)->except(['create', 'show', 'edit']);
-    // Role route moved to super admin group
     Route::resource('shift', \App\Http\Controllers\ShiftController::class)->except(['create', 'edit', 'show']);
     Route::resource('jadwal', \App\Http\Controllers\JadwalController::class)->except(['edit', 'show']);
     Route::resource('pegawai', PegawaiController::class);
@@ -99,9 +98,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::get('/tukar-shift/jadwal-user', [\App\Http\Controllers\TukarShiftController::class, 'getJadwalUser'])->name('tukar-shift.jadwal-user');
     Route::resource('tukar-shift', \App\Http\Controllers\TukarShiftController::class)->only(['index', 'create', 'store']);
-});
 
-Route::middleware(['auth', 'role:super admin,super_admin'])->group(function () {
     Route::get('/permissions', [PermissionController::class, 'index'])->name('permission.index');
     Route::post('/permissions', [PermissionController::class, 'store'])->name('permission.store');
     Route::post('/permissions/sync/{id_role}', [PermissionController::class, 'sync'])->name('permission.sync');

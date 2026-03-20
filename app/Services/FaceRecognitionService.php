@@ -54,6 +54,8 @@ class FaceRecognitionService
                 ->where('id', $userId)
                 ->update(['is_face_registered' => 1]);
 
+            $trainingSuccess = false;
+
             try {
                 $pythonPath = env('PYTHON_PATH', 'python');
                 $scriptPath = base_path('python_scripts/train_face.py');
@@ -73,22 +75,26 @@ class FaceRecognitionService
                 $process->run();
 
                 if (!$process->isSuccessful()) {
-                    \Illuminate\Support\Facades\Log::warning("Face Training Failed (silently caught): " . $process->getErrorOutput());
+                    \Illuminate\Support\Facades\Log::warning("Face Training Failed: " . $process->getErrorOutput());
                 } else {
                     $output = json_decode($process->getOutput(), true);
-                    if (!isset($output['status']) || $output['status'] !== 'success') {
-                        \Illuminate\Support\Facades\Log::warning("Face Training Failed (silently caught): " . ($output['message'] ?? 'Unknown Error'));
+                    if (isset($output['status']) && $output['status'] === 'success') {
+                        $trainingSuccess = true;
+                    } else {
+                        \Illuminate\Support\Facades\Log::warning("Face Training Failed: " . ($output['message'] ?? 'Unknown Error'));
                     }
                 }
             } catch (\Exception $trainEx) {
-                \Illuminate\Support\Facades\Log::warning("Face Training Error (silently caught): " . $trainEx->getMessage());
+                \Illuminate\Support\Facades\Log::warning("Face Training Error: " . $trainEx->getMessage());
             }
 
             $relativeModelPath = "face_models/user_{$userId}.yml";
 
+            // Jika training Python berhasil → otomatis verified
+            // Jika training gagal → tetap pending (is_verified = 0), butuh approval manual HRD
             DB::table('data_wajah')->where('id_user', $userId)->update([
                 'path_model_yml' => $relativeModelPath,
-                'is_verified' => 0,
+                'is_verified'    => $trainingSuccess ? 1 : 0,
             ]);
 
             DB::commit();

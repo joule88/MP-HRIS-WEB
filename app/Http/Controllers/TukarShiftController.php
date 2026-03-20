@@ -26,7 +26,7 @@ class TukarShiftController extends Controller
     public function create()
     {
         $pegawai = User::with('kantor')->whereDoesntHave('roles', function ($q) {
-            $q->where('nama_role', 'admin')->orWhere('nama_role', 'Admin');
+            $q->where('nama_role', 'hrd');
         })->get();
 
         $kantor = \App\Models\Kantor::orderBy('nama_kantor', 'asc')->get();

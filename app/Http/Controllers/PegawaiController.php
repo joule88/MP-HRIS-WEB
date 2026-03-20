@@ -19,7 +19,7 @@ class PegawaiController extends Controller
     {
         $query = User::with(['divisi', 'jabatan', 'kantor', 'roles'])
             ->whereDoesntHave('roles', function ($q) {
-                $q->where('nama_role', 'admin');
+                $q->where('nama_role', 'hrd');
             });
 
         if ($request->filled('filter_jabatan')) {
@@ -49,7 +49,7 @@ class PegawaiController extends Controller
         $allKantor = Kantor::withCount([
             'users as total_pegawai' => function ($q) {
                 $q->whereDoesntHave('roles', function ($sq) {
-                    $sq->where('nama_role', 'admin');
+                    $sq->where('nama_role', 'hrd');
                 });
             }
         ])->get();
@@ -57,11 +57,11 @@ class PegawaiController extends Controller
         $stats = [
             'kantor_list' => $allKantor,
             'total' => User::whereDoesntHave('roles', function ($q) {
-                $q->where('nama_role', 'admin');
+                $q->where('nama_role', 'hrd');
             })->count(),
             'active' => User::where('status_aktif', 1)
                 ->whereDoesntHave('roles', function ($q) {
-                    $q->where('nama_role', 'admin');
+                    $q->where('nama_role', 'hrd');
                 })->count(),
         ];
 
