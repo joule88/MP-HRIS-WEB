@@ -14,7 +14,6 @@ class StorePegawaiRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nik' => ['required', 'numeric', 'unique:users,nik'],
             'nama_lengkap' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
             'no_telp' => ['nullable', 'string', 'max:20'],

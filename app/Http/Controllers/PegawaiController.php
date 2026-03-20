@@ -70,6 +70,57 @@ class PegawaiController extends Controller
         return view('pegawai.index', compact('pegawai', 'stats', 'allJabatan', 'allKantor'));
     }
 
+    private function generateIdKaryawan($tglBergabung, $idDivisi, $idJabatan)
+    {
+        // 1. Ambil Tahun & Bulan (YYYYMM)
+        $date = \Carbon\Carbon::parse($tglBergabung);
+        $yearMonth = $date->format('Ym');
+
+        // 2. Ambil 2 huruf dari Divisi & Jabatan (XXYY)
+        $divisi = Divisi::find($idDivisi);
+        $jabatan = Jabatan::find($idJabatan);
+
+        $kodeDivisi = 'XX';
+        if ($divisi) {
+            $words = explode(' ', $divisi->nama_divisi);
+            if (count($words) >= 2) {
+                $kodeDivisi = strtoupper(substr($words[0], 0, 1) . substr($words[1], 0, 1));
+            } else {
+                $kodeDivisi = strtoupper(substr($divisi->nama_divisi, 0, 2));
+            }
+        }
+
+        $kodeJabatan = 'YY';
+        if ($jabatan) {
+            $words = explode(' ', $jabatan->nama_jabatan);
+            if (count($words) >= 2) {
+                $kodeJabatan = strtoupper(substr($words[0], 0, 1) . substr($words[1], 0, 1));
+            } else {
+                $kodeJabatan = strtoupper(substr($jabatan->nama_jabatan, 0, 2));
+            }
+        }
+        $kodeTengah = $kodeDivisi . $kodeJabatan;
+
+        // 3. Generate Nomor Urut (NNN) per tahun bergabun
+        $yearStarts = $date->copy()->startOfYear()->toDateString();
+        $yearEnds = $date->copy()->endOfYear()->toDateString();
+
+        $lastUser = User::whereBetween('tgl_bergabung', [$yearStarts, $yearEnds])
+            ->whereNotNull('nik')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $nextNumber = 1;
+        if ($lastUser && preg_match('/-(\d{3})$/', $lastUser->nik, $matches)) {
+            $nextNumber = intval($matches[1]) + 1;
+        }
+
+        $nomorUrut = str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+
+        // Format: MPG-202603-ITST-001
+        return "MPG-{$yearMonth}-{$kodeTengah}-{$nomorUrut}";
+    }
+
     public function store(StorePegawaiRequest $request)
     {
         $data = $request->validated();
@@ -77,6 +128,10 @@ class PegawaiController extends Controller
         if ($request->hasFile('foto')) {
             $data['foto'] = $request->file('foto')->store('foto-profil', 'public');
         }
+
+        // Generate ID Karyawan Otomatis
+        $tglBergabung = $data['tgl_bergabung'] ?? now()->toDateString();
+        $data['nik'] = $this->generateIdKaryawan($tglBergabung, $data['id_divisi'], $data['id_jabatan']);
 
         $data['password'] = Hash::make('Mpg123!');
         $data['status_aktif'] = 1;

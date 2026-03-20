@@ -22,8 +22,8 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
 
                         <div class="w-full">
-                            <x-input label="Nomor Induk Kewarganegaraan (NIK)" name="nik"
-                                placeholder="Masukkan NIK sesuai KTP" required />
+                            <x-input label="ID Karyawan" name="nik"
+                                placeholder="Otomatis dibuat oleh sistem" readonly class="bg-slate-50 opacity-70 cursor-not-allowed" />
                         </div>
                         <div class="w-full">
                             <x-input label="Nama Lengkap" name="nama_lengkap" placeholder="Masukkan nama sesuai KTP" required />
