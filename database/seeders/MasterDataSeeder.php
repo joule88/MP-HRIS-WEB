@@ -49,16 +49,16 @@ class MasterDataSeeder extends Seeder
         $roleStaff      = \App\Models\Role::firstOrCreate(['nama_role' => 'staff']);
 
         $hrd = User::updateOrCreate(
-            ['nik' => '999999999'],
+            ['email' => 'hrd@mpg.co.id'],
             [
+                'nik'           => 'MPG-202401-HRMG-001',
                 'nama_lengkap'  => 'HRD Manager',
-                'email'         => 'hrd@mpg.co.id',
                 'password'      => Hash::make('Mpg123!'),
                 'status_aktif'  => 1,
                 'id_divisi'     => $divHR->id_divisi,
                 'id_jabatan'    => $jabMgr->id_jabatan,
                 'id_kantor'     => $kPusat->id_kantor,
-                'tgl_bergabung' => now(),
+                'tgl_bergabung' => '2024-01-01',
                 'sisa_cuti'     => 12,
             ]
         );
@@ -69,14 +69,14 @@ class MasterDataSeeder extends Seeder
         $pegawai = User::updateOrCreate(
             ['email' => 'budi@mpg.co.id'],
             [
+                'nik'           => 'MPG-202401-HRST-001',
                 'nama_lengkap'  => 'Budi Santoso',
                 'password'      => Hash::make('Mpg123!'),
-                'nik'           => '350712345678',
                 'status_aktif'  => 1,
                 'id_divisi'     => $divHR->id_divisi,
                 'id_jabatan'    => $jabStf->id_jabatan,
                 'id_kantor'     => $kCabang->id_kantor,
-                'tgl_bergabung' => now(),
+                'tgl_bergabung' => '2024-01-01',
                 'sisa_cuti'     => 12,
             ]
         );
