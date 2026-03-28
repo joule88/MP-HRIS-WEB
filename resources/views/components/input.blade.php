@@ -1,4 +1,4 @@
-﻿@props(['label' => null, 'name', 'type' => 'text', 'placeholder' => '', 'value' => '', 'disabled' => false])
+@props(['label' => null, 'name', 'type' => 'text', 'placeholder' => '', 'value' => '', 'disabled' => false])
 
 @php
     $id = $attributes->get('id', $name);
@@ -19,7 +19,7 @@
         placeholder="{{ $placeholder }}"
         {{ $disabled ? 'disabled' : '' }}
         {!! $attributes->except(['id', 'name', 'type', 'value', 'placeholder', 'class'])->merge([
-            'class' => 'w-full px-4 py-2 border border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#130F26]/10 focus:border-[#130F26] outline-none transition-all duration-300 placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-500 h-11'
+            'class' => 'w-full block px-4 py-2 border border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:ring-4 focus:ring-[#130F26]/10 focus:border-[#130F26] outline-none transition-all duration-300 placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-500 h-11'
         ]) !!}
     >
     

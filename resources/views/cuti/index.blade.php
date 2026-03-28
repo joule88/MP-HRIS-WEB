@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Manajemen Sisa Cuti')
 
@@ -165,11 +165,21 @@
                                 Aksi ini <strong>menimpa dan menghilangkan</strong> semua sisa cuti pegawai sebelumnya tanpa pandang bulu. Aksi ini tidak bisa dibatalkan!
                             </div>
                         </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                Ketik <span class="font-mono text-rose-600 bg-rose-50 px-1 rounded">RESET</span> untuk mengkonfirmasi
+                            </label>
+                            <input type="text" id="konfirmasiReset" placeholder="Ketik RESET di sini..." 
+                                oninput="toggleResetBtn(this.value)"
+                                class="block w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-rose-500 focus:border-rose-500 transition-colors">
+                        </div>
                     </div>
                 </div>
 
                 <div class="bg-slate-50 px-6 py-4 flex flex-row-reverse border-t border-slate-100 gap-2">
-                    <button type="submit" class="w-full sm:w-auto inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-slate-800 text-base font-medium text-white hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 sm:text-sm transition-colors" onclick="document.getElementById('submitBtnReset').innerHTML = 'Memproses...'">
+                    <button type="submit" id="btnResetSubmit" disabled
+                        class="w-full sm:w-auto inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-rose-600 text-base font-medium text-white hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-600 sm:text-sm transition-colors">
                         <span id="submitBtnReset">Ya, Reset Sekarang</span>
                     </button>
                     <button type="button" class="w-full sm:w-auto inline-flex justify-center rounded-lg border border-slate-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:text-sm" onclick="toggleModal('modalReset')">
@@ -186,6 +196,19 @@
 <script>
     function toggleModal(modalID) {
         document.getElementById(modalID).classList.toggle("hidden");
+
+        // Reset field konfirmasi reset saat modal ditutup
+        if (modalID === 'modalReset') {
+            const konfirmasi = document.getElementById('konfirmasiReset');
+            const btn = document.getElementById('btnResetSubmit');
+            if (konfirmasi) konfirmasi.value = '';
+            if (btn) btn.disabled = true;
+        }
+    }
+
+    function toggleResetBtn(value) {
+        const btn = document.getElementById('btnResetSubmit');
+        btn.disabled = value !== 'RESET';
     }
 
     function openEditModal(id, nama, sisa) {

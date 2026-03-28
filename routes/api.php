@@ -10,7 +10,7 @@ use App\Http\Controllers\Api\LemburController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\FaceEnrollmentController;
 use App\Http\Controllers\Api\PoinController;
-use App\Http\Controllers\Api\KompensasiController;
+
 use App\Http\Controllers\Api\SignatureApiController;
 use App\Http\Controllers\Api\SuratIzinApiController;
 
@@ -22,7 +22,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\Api\DashboardController::class, 'index']);
     Route::post('/profile/update', [ProfileController::class, 'update']);
     Route::post('/profile/password', [ProfileController::class, 'password']);
-    Route::post('/profile/update2', [AuthController::class, 'updateProfile']);
 
     Route::post('/face/enroll', [FaceEnrollmentController::class, 'enrollFace']);
     Route::get('/face/status', [FaceEnrollmentController::class, 'getFaceStatus']);
@@ -46,15 +45,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/submission/{id}', [SubmissionController::class, 'update']);
     Route::get('/submission/history', [SubmissionController::class, 'history']);
 
-    Route::get('/jenis-izin', [SubmissionController::class, 'types']);
-    Route::post('/pengajuan-izin', [SubmissionController::class, 'store']);
-    Route::put('/pengajuan-izin/{id}', [SubmissionController::class, 'update']);
-
     Route::post('/lembur', [LemburController::class, 'store']);
     Route::put('/lembur/{id}', [LemburController::class, 'update']);
     Route::get('/lembur/history', [LemburController::class, 'history']);
-
-    Route::get('/kompensasi', [KompensasiController::class, 'index']);
 
     Route::get('/pengumuman', [\App\Http\Controllers\Api\PengumumanApiController::class, 'index']);
 
@@ -67,5 +60,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/surat-izin', [SuratIzinApiController::class, 'index']);
     Route::post('/surat-izin', [SuratIzinApiController::class, 'store']);
     Route::get('/surat-izin/{id}', [SuratIzinApiController::class, 'show']);
+
+    // Notifikasi
+    Route::prefix('notifikasi')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\NotifikasiApiController::class, 'index']);
+        Route::get('/unread-count', [\App\Http\Controllers\Api\NotifikasiApiController::class, 'unreadCount']);
+        Route::post('/{id}/read', [\App\Http\Controllers\Api\NotifikasiApiController::class, 'markAsRead']);
+        Route::post('/read-all', [\App\Http\Controllers\Api\NotifikasiApiController::class, 'markAllAsRead']);
+    });
+    Route::post('/device-token', [\App\Http\Controllers\Api\NotifikasiApiController::class, 'saveDeviceToken']);
 
 });

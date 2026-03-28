@@ -118,7 +118,7 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return $this->roles->contains(function ($role) {
-            return strtolower($role->nama_role) === 'hrd';
+            return strtolower($role->nama_role) === 'super_admin';
         });
     }
 
@@ -150,5 +150,10 @@ class User extends Authenticatable
     public function lemburs(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Lembur::class, 'id_user', 'id');
+    }
+
+    public function notifikasi(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Notifikasi::class, 'id_user', 'id');
     }
 }

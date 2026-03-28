@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Master Shift Kerja')
 
@@ -82,12 +82,10 @@
     <x-modal name="create-shift" title="Tambah Shift Baru">
         <form action="{{ route('shift.store') }}" method="POST">
             @csrf
-            <div class="space-y-4">
-                <x-input label="Nama Shift" name="nama_shift" placeholder="Contoh: Shift Pagi" required />
-                <div class="grid grid-cols-2 gap-4">
-                    <x-input type="time" label="Jam Masuk" name="jam_mulai" required />
-                    <x-input type="time" label="Jam Pulang" name="jam_selesai" required />
-                </div>
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1"><x-input label="Nama Shift" name="nama_shift" placeholder="Cth: Shift Pagi" required /></div>
+                <div class="flex-1"><x-input type="time" label="Jam Masuk" name="jam_mulai" required /></div>
+                <div class="flex-1"><x-input type="time" label="Jam Pulang" name="jam_selesai" required /></div>
             </div>
             <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
                 <button type="button" x-data @click="$dispatch('close-modal', 'create-shift')"
@@ -101,12 +99,10 @@
     <x-modal name="edit-shift" title="Edit Shift">
         <form id="editForm" method="POST">
             @csrf @method('PUT')
-            <div class="space-y-4">
-                <x-input label="Nama Shift" name="nama_shift" id="edit_nama_shift" required />
-                <div class="grid grid-cols-2 gap-4">
-                    <x-input type="time" label="Jam Masuk" name="jam_mulai" id="edit_jam_mulai" required />
-                    <x-input type="time" label="Jam Pulang" name="jam_selesai" id="edit_jam_selesai" required />
-                </div>
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1"><x-input label="Nama Shift" name="nama_shift" id="edit_nama_shift" required /></div>
+                <div class="flex-1"><x-input type="time" label="Jam Masuk" name="jam_mulai" id="edit_jam_mulai" required /></div>
+                <div class="flex-1"><x-input type="time" label="Jam Pulang" name="jam_selesai" id="edit_jam_selesai" required /></div>
             </div>
             <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
                 <button type="button" x-data @click="$dispatch('close-modal', 'edit-shift')"

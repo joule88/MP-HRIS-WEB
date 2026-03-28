@@ -316,8 +316,8 @@
 
     </nav>
 
-    {{-- ── Footer: Pengaturan Akun & Logout ── --}}
-    <div class="px-8 py-6 border-t border-slate-100 mt-auto bg-slate-50/50">
+    {{-- Footer: Pengaturan Akun & Logout --}}
+    <div class="px-8 py-4 mt-auto bg-slate-50/50">
         <a href="{{ route('profile.edit') }}"
             class="flex items-center px-4 py-3 rounded-xl transition-all duration-200 group {{ request()->routeIs('profile.edit') ? 'bg-[#130F26] text-white shadow-lg shadow-[#130F26]/30' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' }}">
             <svg class="w-5 h-5 mr-3 {{ request()->routeIs('profile.edit') ? 'text-white' : 'text-slate-400 group-hover:text-slate-600' }} group-hover:scale-110 transition-transform duration-300"

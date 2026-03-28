@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Laporan Lembur')
 
@@ -21,7 +21,7 @@
         <div class="p-4 border-b border-slate-100 bg-slate-50/50">
             <form action="{{ route('laporan-lembur.index') }}" method="GET" class="flex flex-wrap gap-4 items-end">
                 <div class="w-full md:w-40">
-                    <x-select label="Bulan" name="bulan" onchange="this.form.submit()">
+                    <x-select label="Bulan" name="bulan" onchange="this.form.submit()" class="!mb-0">
                         @for($i=1; $i<=12; $i++)
                             @php $val = str_pad($i, 2, '0', STR_PAD_LEFT); @endphp
                             <option value="{{ $val }}" {{ $bulan == $val ? 'selected' : '' }}>
@@ -32,7 +32,7 @@
                 </div>
                 
                 <div class="w-full md:w-32">
-                    <x-select label="Tahun" name="tahun" onchange="this.form.submit()">
+                    <x-select label="Tahun" name="tahun" onchange="this.form.submit()" class="!mb-0">
                         @for($i=date('Y'); $i>=2023; $i--)
                             <option value="{{ $i }}" {{ $tahun == $i ? 'selected' : '' }}>{{ $i }}</option>
                         @endfor
@@ -40,7 +40,7 @@
                 </div>
 
                 <div class="w-full md:w-48">
-                    <x-select label="Divisi" name="id_divisi" onchange="this.form.submit()">
+                    <x-select label="Divisi" name="id_divisi" onchange="this.form.submit()" class="!mb-0">
                         <option value="">Semua Divisi</option>
                         @foreach($divisiList as $div)
                             <option value="{{ $div->id_divisi }}" {{ ($divisiId ?? '') == $div->id_divisi ? 'selected' : '' }}>
@@ -55,8 +55,8 @@
                         class="!mb-0" oninput="if(this.value.length === 0) this.form.submit()" />
                 </div>
                 
-                <div class="pb-1">
-                    <x-button type="submit" variant="secondary" class="h-[42px]">
+                <div>
+                    <x-button type="submit" variant="secondary" class="h-[44px]">
                         Filter
                     </x-button>
                 </div>

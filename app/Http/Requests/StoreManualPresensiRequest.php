@@ -32,7 +32,14 @@ class StoreManualPresensiRequest extends FormRequest
                 'nullable',
                 'date_format:H:i'
             ],
-            'jam_pulang' => 'nullable|date_format:H:i',
+            'jam_pulang' => [
+                'nullable',
+                'date_format:H:i',
+                Rule::when(
+                    fn () => $this->jam_masuk && $this->jam_pulang,
+                    ['after:jam_masuk']
+                ),
+            ],
             'alasan_telat' => 'nullable|string|max:255'
         ];
     }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Helpers\ApiResponse;
 use App\Services\LemburService;
+use App\Services\NotifikasiService;
 use App\Http\Requests\StoreLemburRequest;
 use App\Models\Lembur;
 use Illuminate\Http\Request;
@@ -25,6 +26,13 @@ class LemburController extends Controller
             $user = Auth::user();
 
             $this->lemburService->createLembur($user, $request->validated());
+
+            app(NotifikasiService::class)->kirimKeRole(
+                'hrd',
+                'pengajuan_baru',
+                'Pengajuan Lembur Baru',
+                $user->nama_lengkap . ' mengajukan lembur.'
+            );
 
             return ApiResponse::success(null, 'Pengajuan lembur berhasil dikirim.', 201);
 

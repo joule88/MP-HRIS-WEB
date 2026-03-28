@@ -74,6 +74,12 @@ class JadwalController extends Controller
             });
         }
 
+        if ($request->filled('filter_nama') && $request->filter_nama != "") {
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('nama_lengkap', 'like', '%' . $request->filter_nama . '%');
+            });
+        }
+
         $jadwals = $query->get();
 
         $poinUsed = PenggunaanPoin::with('jenisPengurangan')
@@ -147,6 +153,7 @@ class JadwalController extends Controller
                     'jabatan' => $jadwalItem->user?->jabatan?->nama_jabatan ?? '-',
                     'id_shift' => $jadwalItem->id_shift,
                     'id_user' => $jadwalItem->id_user,
+                    'nik' => $jadwalItem->user?->nik ?? '-',
                 ]
             ];
         }
@@ -222,6 +229,11 @@ class JadwalController extends Controller
             'user_ids' => 'required|array',
             'user_ids.*' => 'exists:users,id',
         ]);
+
+        // Guard: pastikan ada data shift sebelum memproses
+        if (ShiftKerja::count() === 0) {
+            return redirect()->back()->with('error', 'Tidak ada data Shift yang tersedia. Tambahkan Shift terlebih dahulu di menu Data Master → Shift.');
+        }
 
         $user = Auth::user();
         $isGlobalAdmin = $user->isGlobalAdmin();

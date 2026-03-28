@@ -6,6 +6,7 @@ use App\Models\SuratIzin;
 use App\Models\ApprovalSurat;
 use App\Models\TandaTangan;
 use App\Models\Presensi;
+use App\Services\NotifikasiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -61,6 +62,7 @@ class SuratIzinController extends Controller
         }
 
         $canApprove = false;
+        $tahapApproval = null;
 
         if ($surat->status_surat === 'menunggu_manajer' && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
             $canApprove = true;
@@ -128,7 +130,26 @@ class SuratIzinController extends Controller
 
             DB::commit();
 
-            $statusLabel = $tahap === 1 ? 'Menunggu HRD' : 'Disetujui';
+            if ($tahap === 1) {
+                $statusLabel = 'Menunggu HRD';
+                app(NotifikasiService::class)->kirim(
+                    $surat->id_user,
+                    'izin_proses',
+                    'Surat Izin Diproses',
+                    'Surat izin Anda telah disetujui Manajer dan sedang menunggu persetujuan HRD.',
+                    ['id_surat' => $surat->id_surat]
+                );
+            } else {
+                $statusLabel = 'Disetujui';
+                app(NotifikasiService::class)->kirim(
+                    $surat->id_user,
+                    'izin_disetujui',
+                    'Surat Izin Disetujui ✅',
+                    'Surat izin Anda telah disetujui sepenuhnya.',
+                    ['id_surat' => $surat->id_surat]
+                );
+            }
+
             return redirect()->back()->with('success', "Surat berhasil disetujui. Status: {$statusLabel}");
 
         } catch (\Exception $e) {
@@ -183,6 +204,14 @@ class SuratIzinController extends Controller
             }
 
             DB::commit();
+
+            app(NotifikasiService::class)->kirim(
+                $surat->id_user,
+                'izin_ditolak',
+                'Surat Izin Ditolak ❌',
+                'Surat izin Anda ditolak. Catatan: ' . ($request->catatan ?? '-'),
+                ['id_surat' => $surat->id_surat]
+            );
 
             return redirect()->back()->with('success', 'Surat izin berhasil ditolak.');
 

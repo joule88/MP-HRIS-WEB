@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Manajemen Izin & Cuti')
 
@@ -121,20 +121,20 @@
         <form action="{{ route('izin.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
             @csrf
 
-            <div class="grid grid-cols-2 gap-4">
-                <x-select id="filter-kantor-izin" label="Filter Kantor">
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1"><x-select id="filter-kantor-izin" label="Filter Kantor">
                     <option value="">Semua Kantor</option>
                     @foreach($kantor as $k)
                         <option value="{{ $k->id_kantor }}">{{ $k->nama_kantor }}</option>
                     @endforeach
-                </x-select>
+                </x-select></div>
 
-                <x-select id="filter-divisi-izin" label="Filter Divisi">
+                <div class="flex-1"><x-select id="filter-divisi-izin" label="Filter Divisi">
                     <option value="">Semua Divisi</option>
                     @foreach($divisi as $d)
                         <option value="{{ $d->id_divisi }}">{{ $d->nama_divisi }}</option>
                     @endforeach
-                </x-select>
+                </x-select></div>
             </div>
 
             <div>
@@ -156,9 +156,9 @@
                 </x-select>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-                <x-input type="date" label="Tanggal Mulai" name="tanggal_mulai" required />
-                <x-input type="date" label="Tanggal Selesai" name="tanggal_selesai" required />
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1"><x-input type="date" label="Tanggal Mulai" name="tanggal_mulai" required /></div>
+                <div class="flex-1"><x-input type="date" label="Tanggal Selesai" name="tanggal_selesai" required /></div>
             </div>
 
             <div>

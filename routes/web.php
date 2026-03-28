@@ -47,6 +47,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan.index');
     Route::get('/laporan/izin', [LaporanController::class, 'cuti'])->name('laporan.izin');
+    Route::get('/laporan/izin/export', [LaporanController::class, 'exportIzinExcel'])->name('laporan.izin.export');
     Route::get('/laporan/export', [LaporanController::class, 'exportExcel'])->name('laporan.export');
     Route::get('/laporan/export-pdf', [LaporanController::class, 'exportPdf'])->name('laporan.exportPdf');
 
@@ -72,6 +73,13 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/tanda-tangan', [SignatureController::class, 'show'])->name('signature.show');
     Route::post('/tanda-tangan', [SignatureController::class, 'store'])->name('signature.store');
+
+    // Notifikasi Web (semua role)
+    Route::get('/notifikasi', [\App\Http\Controllers\NotifikasiWebController::class, 'index'])->name('notifikasi.index');
+    Route::get('/notifikasi/unread-count', [\App\Http\Controllers\NotifikasiWebController::class, 'unreadCount'])->name('notifikasi.unread-count');
+    Route::get('/notifikasi/recent', [\App\Http\Controllers\NotifikasiWebController::class, 'recent'])->name('notifikasi.recent');
+    Route::post('/notifikasi/read-all', [\App\Http\Controllers\NotifikasiWebController::class, 'markAllAsRead'])->name('notifikasi.read-all');
+    Route::post('/notifikasi/{id}/read', [\App\Http\Controllers\NotifikasiWebController::class, 'markAsRead'])->name('notifikasi.read');
 });
 
 Route::middleware(['auth', 'role:hrd'])->group(function () {
@@ -107,6 +115,9 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::get('/face-approval/photo/{userId}/{pose}', [FaceApprovalController::class, 'showPhoto'])->name('face.photo');
     Route::put('/face-approval/{id}/approve', [FaceApprovalController::class, 'approve'])->name('face.approve');
     Route::delete('/face-approval/{id}/reject', [FaceApprovalController::class, 'reject'])->name('face.reject');
+    Route::delete('/face-approval/{id}/reset', [FaceApprovalController::class, 'reset'])->name('face.reset');
 
     Route::resource('role', RoleController::class)->except(['create', 'edit']);
+
+
 });

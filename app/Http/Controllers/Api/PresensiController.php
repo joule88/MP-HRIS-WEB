@@ -152,7 +152,9 @@ class PresensiController extends Controller
 
                 $statusMasuk = '-';
                 if ($item->jam_masuk) {
-                    if ($item->waktu_terlambat) {
+                    if ($item->id_status == 5) {
+                        $statusMasuk = 'Alpha (Batal)';
+                    } elseif ($item->waktu_terlambat) {
                         $statusMasuk = 'Terlambat';
                     } elseif ($item->waktu_masuk_awal) {
                         $statusMasuk = 'Datang Awal';
@@ -196,6 +198,8 @@ class PresensiController extends Controller
                     } catch (\Exception $e) {
                         $totalJam = '-';
                     }
+                } elseif ($item->jam_masuk && !$item->jam_pulang && $item->id_status == 5) {
+                    $totalJam = '0j 0m (Batal)';
                 }
 
                 return [

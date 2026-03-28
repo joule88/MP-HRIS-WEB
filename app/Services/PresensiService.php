@@ -193,8 +193,23 @@ class PresensiService
 
         $dynamicSchedule = $this->getDynamicSchedule($user->id, $hariIni);
 
-        $jamPulangEfektif = $dynamicSchedule['jam_pulang'];
-        $statusJadwal = $dynamicSchedule['status_jadwal'];
+        if (!$dynamicSchedule) {
+            $jadwalFallback = JadwalKerja::with('shift')
+                ->where('id_user', $user->id)
+                ->where('tanggal', $hariIni)
+                ->first();
+
+            if (!$jadwalFallback) {
+                throw new \Exception('Jadwal kerja tidak ditemukan.', 404);
+            }
+
+            $jamPulangEfektif = $jadwalFallback->shift->jam_selesai;
+            $statusJadwal = 'Normal';
+        } else {
+            $jamPulangEfektif = $dynamicSchedule['jam_pulang'];
+            $statusJadwal     = $dynamicSchedule['status_jadwal'];
+        }
+
 
         $jamPulangTarget = Carbon::parse($jamPulangEfektif, 'Asia/Jakarta');
         $isPulangAwal = $jamSekarang->lessThan($jamPulangTarget);

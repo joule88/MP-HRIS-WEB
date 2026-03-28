@@ -8,6 +8,7 @@ use App\Models\PengajuanIzin;
 use App\Models\JenisIzin;
 use App\Models\SuratIzin;
 use App\Models\TandaTangan;
+use App\Services\NotifikasiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -29,12 +30,45 @@ class SubmissionController extends Controller
 
             $jenisIzin = JenisIzin::find($request->id_jenis_izin);
             if ($jenisIzin && $jenisIzin->nama_izin == 'Cuti') {
+                // Validasi sisa cuti
+                if ($user->sisa_cuti <= 0) {
+                    return ApiResponse::error('Sisa cuti Anda sudah habis (0 hari). Pengajuan cuti tidak dapat dilanjutkan.', 400);
+                }
+
                 $tanggalMulai = Carbon::parse($request->tanggal_mulai);
                 $minDate = Carbon::now()->addDays(7)->startOfDay();
 
                 if ($tanggalMulai->lt($minDate)) {
                     return ApiResponse::error('Pengajuan Cuti minimal H-7!', 400);
                 }
+            }
+
+            $tglMulai = $request->tanggal_mulai;
+            $tglSelesai = $request->tanggal_selesai;
+            $userId = $user->id;
+
+            $overlappingIzin = PengajuanIzin::where('id_user', $userId)
+                ->whereIn('id_status', [1, 2])
+                ->where(function ($q) use ($tglMulai, $tglSelesai) {
+                    $q->whereBetween('tanggal_mulai', [$tglMulai, $tglSelesai])
+                      ->orWhereBetween('tanggal_selesai', [$tglMulai, $tglSelesai])
+                      ->orWhere(function ($q2) use ($tglMulai, $tglSelesai) {
+                          $q2->where('tanggal_mulai', '<=', $tglMulai)
+                             ->where('tanggal_selesai', '>=', $tglSelesai);
+                      });
+                })->exists();
+
+            if ($overlappingIzin) {
+                return ApiResponse::error('Anda sudah memiliki pengajuan Izin/Cuti (Pending/Disetujui) pada rentang tanggal tersebut!', 400);
+            }
+
+            $existingPresensi = \App\Models\Presensi::where('id_user', $userId)
+                ->whereBetween('tanggal', [$tglMulai, $tglSelesai])
+                ->whereNotNull('jam_masuk')
+                ->exists();
+
+            if ($existingPresensi) {
+                return ApiResponse::error('Anda sudah tercatat absen masuk (hadir) pada rentang tanggal tersebut!', 400);
             }
 
             DB::beginTransaction();
@@ -74,7 +108,7 @@ class SubmissionController extends Controller
             $suratIzin = null;
             if ($jenisIzin && $jenisIzin->nama_izin == 'Cuti') {
                 $suratIzin = SuratIzin::create([
-                    'id_izin' => $submission->id_izin,
+                    'id_izin' => $submission->getKey(),
                     'id_user' => $user->id,
                     'id_ttd_pengaju' => $ttdAktif?->id_tanda_tangan,
                     'isi_surat' => $isiSurat,
@@ -83,6 +117,14 @@ class SubmissionController extends Controller
             }
 
             DB::commit();
+
+            app(NotifikasiService::class)->kirimKeRole(
+                'hrd',
+                'pengajuan_baru',
+                'Pengajuan Baru: ' . ($jenisIzin->nama_izin ?? 'Izin'),
+                $user->nama_lengkap . ' mengajukan ' . ($jenisIzin->nama_izin ?? 'izin') . '.',
+                ['id_izin' => $submission->getKey()]
+            );
 
             $responseData = $submission->toArray();
             if ($suratIzin) {
@@ -155,6 +197,35 @@ class SubmissionController extends Controller
 
             if (!$submission) {
                 return ApiResponse::error('Pengajuan tidak ditemukan atau sudah diproses.', 404);
+            }
+
+            $tglMulai = $request->tanggal_mulai;
+            $tglSelesai = $request->tanggal_selesai;
+            $userId = Auth::id();
+
+            $overlappingIzin = PengajuanIzin::where('id_user', $userId)
+                ->where('id_izin', '!=', $id)
+                ->whereIn('id_status', [1, 2])
+                ->where(function ($q) use ($tglMulai, $tglSelesai) {
+                    $q->whereBetween('tanggal_mulai', [$tglMulai, $tglSelesai])
+                      ->orWhereBetween('tanggal_selesai', [$tglMulai, $tglSelesai])
+                      ->orWhere(function ($q2) use ($tglMulai, $tglSelesai) {
+                          $q2->where('tanggal_mulai', '<=', $tglMulai)
+                             ->where('tanggal_selesai', '>=', $tglSelesai);
+                      });
+                })->exists();
+
+            if ($overlappingIzin) {
+                return ApiResponse::error('Anda sudah memiliki pengajuan Izin/Cuti lain (Pending/Disetujui) pada rentang tanggal tersebut!', 400);
+            }
+
+            $existingPresensi = \App\Models\Presensi::where('id_user', $userId)
+                ->whereBetween('tanggal', [$tglMulai, $tglSelesai])
+                ->whereNotNull('jam_masuk')
+                ->exists();
+
+            if ($existingPresensi) {
+                return ApiResponse::error('Anda sudah tercatat absen masuk (hadir) pada rentang tanggal tersebut!', 400);
             }
 
             DB::beginTransaction();

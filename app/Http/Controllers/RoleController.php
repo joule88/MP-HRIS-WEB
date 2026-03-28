@@ -10,9 +10,11 @@ use Illuminate\Http\Request;
 
 class RoleController extends Controller
 {
+    const ROLE_KRITIS = ['manajer', 'manager', 'supervisor', 'hrd', 'super_admin', 'staff'];
+
     public function index(Request $request)
     {
-        $query = Role::with(['permissions', 'users']);
+        $query = Role::with(['permissions'])->withCount('users');
 
         if ($request->filled('search')) {
             $query->where('nama_role', 'like', '%' . $request->search . '%');
@@ -39,6 +41,12 @@ class RoleController extends Controller
     public function update(UpdateRoleRequest $request, $id)
     {
         $role = Role::findOrFail($id);
+
+        if (in_array(strtolower($role->nama_role), self::ROLE_KRITIS)) {
+            return redirect()->route('role.index')
+                ->with('error', 'Role sistem tidak dapat diubah.');
+        }
+
         $role->update($request->validated());
 
         if ($request->has('id_permissions')) {
@@ -54,7 +62,11 @@ class RoleController extends Controller
     public function destroy($id)
     {
         $role = Role::findOrFail($id);
-        
+
+        if (in_array(strtolower($role->nama_role), self::ROLE_KRITIS)) {
+            return redirect()->back()->with('error', 'Role sistem tidak dapat dihapus.');
+        }
+
         if ($role->users()->exists()) {
             return redirect()->back()->with('error', 'Role tidak bisa dihapus karena masih digunakan user.');
         }

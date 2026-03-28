@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\LaporanPresensiExport;
+use App\Exports\LaporanIzinExport;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class LaporanController extends Controller
@@ -55,6 +56,41 @@ class LaporanController extends Controller
         return view('laporan.izin', compact('izinList', 'bulan', 'tahun', 'search', 'divisiId', 'divisiList'));
     }
 
+    public function exportIzinExcel(Request $request)
+    {
+        $bulan    = $request->input('bulan', date('m'));
+        $tahun    = $request->input('tahun', date('Y'));
+        $search   = $request->input('search');
+        $divisiId = $request->input('id_divisi');
+
+        $query = \App\Models\PengajuanIzin::with(['user.divisi', 'jenisIzin'])
+            ->whereYear('tanggal_mulai', $tahun)
+            ->whereMonth('tanggal_mulai', $bulan);
+
+        if ($search) {
+            $query->whereHas('user', function ($q) use ($search) {
+                $q->where('nama_lengkap', 'like', "%{$search}%")
+                  ->orWhere('nik', 'like', "%{$search}%");
+            });
+        }
+
+        if ($divisiId) {
+            $query->whereHas('user', function ($q) use ($divisiId) {
+                $q->where('id_divisi', $divisiId);
+            });
+        }
+
+        $data = $query->orderBy('tanggal_mulai', 'desc')->get();
+
+        if ($data->isEmpty()) {
+            return redirect()->back()->with('error', 'Tidak ada data izin/cuti untuk diekspor pada periode tersebut.');
+        }
+
+        $filename = "Laporan_Izin_Cuti_{$bulan}_{$tahun}.xlsx";
+
+        return Excel::download(new LaporanIzinExport($data, $bulan, $tahun), $filename);
+    }
+
     public function exportExcel(Request $request)
     {
         $bulan = $request->input('bulan', date('m'));
@@ -62,6 +98,10 @@ class LaporanController extends Controller
         $divisiId = $request->input('id_divisi');
 
         $rekap = $this->buildRekap($bulan, $tahun, $divisiId);
+
+        if (empty($rekap)) {
+            return redirect()->back()->with('error', 'Tidak ada data presensi untuk diekspor pada periode tersebut.');
+        }
 
         $filename = "Laporan_Presensi_{$bulan}_{$tahun}.xlsx";
 

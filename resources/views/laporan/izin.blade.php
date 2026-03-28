@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Laporan Izin & Cuti')
 
@@ -8,7 +8,9 @@
     <x-page-header title="Laporan Izin & Cuti" subtitle="Histori pengajuan izin dan cuti pegawai secara bulanan.">
         <x-slot:actions>
             <div class="flex gap-2">
-                <x-button type="link" href="#" class="!bg-emerald-50 !text-emerald-700 hover:!bg-emerald-100 !border-emerald-600 !ring-0 flex items-center gap-2 h-[42px]">
+                <x-button type="link" 
+                    href="{{ route('laporan.izin.export', ['bulan' => $bulan, 'tahun' => $tahun, 'id_divisi' => $divisiId, 'search' => $search]) }}"
+                    class="!bg-emerald-50 !text-emerald-700 hover:!bg-emerald-100 !border-emerald-600 !ring-0 flex items-center gap-2 h-[42px]">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     Export Excel
                 </x-button>
@@ -21,7 +23,7 @@
         <div class="p-4 border-b border-slate-100 bg-slate-50/50">
             <form action="{{ route('laporan.izin') }}" method="GET" class="flex flex-wrap gap-4 items-end">
                 <div class="w-full md:w-40">
-                    <x-select label="Bulan" name="bulan" onchange="this.form.submit()">
+                    <x-select label="Bulan" name="bulan" onchange="this.form.submit()" class="!mb-0">
                         @for($i=1; $i<=12; $i++)
                             @php $val = str_pad($i, 2, '0', STR_PAD_LEFT); @endphp
                             <option value="{{ $val }}" {{ $bulan == $val ? 'selected' : '' }}>
@@ -32,7 +34,7 @@
                 </div>
                 
                 <div class="w-full md:w-32">
-                    <x-select label="Tahun" name="tahun" onchange="this.form.submit()">
+                    <x-select label="Tahun" name="tahun" onchange="this.form.submit()" class="!mb-0">
                         @for($i=date('Y'); $i>=2023; $i--)
                             <option value="{{ $i }}" {{ $tahun == $i ? 'selected' : '' }}>{{ $i }}</option>
                         @endfor
@@ -40,7 +42,7 @@
                 </div>
 
                 <div class="w-full md:w-48">
-                    <x-select label="Divisi" name="id_divisi" onchange="this.form.submit()">
+                    <x-select label="Divisi" name="id_divisi" onchange="this.form.submit()" class="!mb-0">
                         <option value="">Semua Divisi</option>
                         @foreach($divisiList as $div)
                             <option value="{{ $div->id_divisi }}" {{ ($divisiId ?? '') == $div->id_divisi ? 'selected' : '' }}>
@@ -55,8 +57,8 @@
                         class="!mb-0" oninput="if(this.value.length === 0) this.form.submit()" />
                 </div>
                 
-                <div class="pb-1">
-                    <x-button type="submit" variant="secondary" class="h-[42px]">
+                <div>
+                    <x-button type="submit" variant="secondary" class="h-[44px]">
                         Filter
                     </x-button>
                 </div>
@@ -102,8 +104,8 @@
                     <td class="px-6 py-4 text-center whitespace-nowrap">
                         @php
                             $color = 'yellow'; $label = 'Menunggu';
-                            if($izin->status == 'disetujui') { $color = 'green'; $label = 'Disetujui'; }
-                            elseif($izin->status == 'ditolak') { $color = 'red'; $label = 'Ditolak'; }
+                            if($izin->id_status == 2) { $color = 'green'; $label = 'Disetujui'; }
+                            elseif($izin->id_status == 3) { $color = 'red'; $label = 'Ditolak'; }
                         @endphp
                         <x-badge color="{{ $color }}">
                             {{ $label }}

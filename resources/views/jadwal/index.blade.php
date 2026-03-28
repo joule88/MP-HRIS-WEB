@@ -1,16 +1,20 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Penjadwalan Shift')
 
 @section('style')
     
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/scale.css" />
     <style>
         .fc-event {
             cursor: pointer;
-            font-size: 11px;
-            padding: 2px 4px;
-            border: none;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            background: transparent;
         }
 
         .fc-daygrid-event {
@@ -51,8 +55,134 @@
             overflow-y: auto !important;
         }
 
+        /* Tippy Light Border Theme Customization */
+        .tippy-box[data-theme~='light-border'] {
+            background-color: white;
+            color: #1e293b;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            font-size: 12px;
+            text-align: left;
+        }
+
+        /* Modern FullCalendar SaaS Overrides */
         #calendar {
             min-height: 600px;
+            font-family: inherit;
+        }
+        
+        .fc-theme-standard td, .fc-theme-standard th, .fc-theme-standard .fc-scrollgrid {
+            border-color: #f1f5f9;
+        }
+        .fc-theme-standard .fc-scrollgrid { border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
+
+        .fc-col-header-cell {
+            background-color: #f8fafc;
+            padding: 12px 0 !important;
+        }
+        .fc-col-header-cell-cushion {
+            color: #64748b;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-decoration: none !important;
+        }
+
+        .fc-daygrid-day-top {
+            justify-content: center !important;
+            padding-top: 8px;
+            padding-bottom: 4px;
+        }
+        .fc-daygrid-day-number {
+            color: #475569;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-decoration: none !important;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            transition: all 0.2s;
+        }
+        .fc-daygrid-day-number:hover {
+            background-color: #f1f5f9;
+        }
+
+        .fc-day-today {
+            background-color: #ffffff !important;
+        }
+        .fc-day-today .fc-daygrid-day-number {
+            color: #ffffff !important;
+            background-color: #3b82f6 !important;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+        }
+
+        .fc-daygrid-day-events {
+            padding: 0 6px !important;
+        }
+        .fc-daygrid-event-harness {
+            margin-bottom: 6px !important;
+        }
+        .fc-event {
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            border-radius: 6px !important;
+            overflow: hidden;
+        }
+
+        .fc-daygrid-more-link {
+            color: #3b82f6 !important;
+            font-weight: 700;
+            font-size: 0.7rem;
+            padding: 5px 8px;
+            background-color: #eff6ff;
+            border-radius: 6px;
+            display: block;
+            text-align: center;
+            margin: 4px 6px 8px 6px;
+            transition: all 0.2s;
+            text-decoration: none !important;
+        }
+        .fc-daygrid-more-link:hover {
+            background-color: #dbeafe;
+            color: #2563eb !important;
+        }
+
+        .fc .fc-toolbar-title {
+            font-size: 1.25rem !important;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .fc .fc-button-primary {
+            background-color: #ffffff !important;
+            color: #475569 !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 8px !important;
+            font-weight: 600;
+            text-transform: capitalize;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            padding: 6px 16px !important;
+            transition: all 0.2s;
+        }
+        .fc .fc-button-primary:hover {
+            background-color: #f8fafc !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+        }
+        .fc .fc-button-primary:not(:disabled).fc-button-active,
+        .fc .fc-button-primary:not(:disabled):active {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+            box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05) !important;
+        }
+        .fc-toolbar.fc-header-toolbar {
+            margin-bottom: 24px !important;
         }
     </style>
 @endsection
@@ -61,6 +191,14 @@
     <div class="space-y-6">
 
         <x-page-header title="Penjadwalan Shift" subtitle="Monitor dan atur jadwal kerja pegawai." class="lg:items-end">
+            <div class="relative max-w-xs w-full lg:w-48">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <svg class="w-4 h-4 text-slate-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+                    </svg>
+                </div>
+                <input type="text" id="filter_nama" class="bg-gray-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full pl-10 p-2" placeholder="Cari Pegawai...">
+            </div>
             <x-filter-select id="filter_kantor">
                 <option value="">Semua Kantor</option>
                 @foreach($kantor as $k)
@@ -253,9 +391,9 @@
                     <p>Hati-hati! Tindakan ini akan menghapus semua jadwal shift pegawai pada rentang tanggal yang dipilih dan tidak dapat dikembalikan.</p>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-4">
-                    <x-date-input label="Tanggal Mulai" name="tanggal_mulai" required class="mb-0" x-model="tglMulai" x-on:change="if(tglMulai) { $refs.endInput.min = tglMulai; if(tglSelesai && tglSelesai < tglMulai) tglSelesai = tglMulai; }" x-ref="startInput" />
-                    <x-date-input label="Tanggal Selesai" name="tanggal_selesai" required class="mb-0" x-model="tglSelesai" x-on:change="if(tglSelesai) { $refs.startInput.max = tglSelesai; if(tglMulai && tglMulai > tglSelesai) tglMulai = tglSelesai; }" x-ref="endInput" />
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1"><x-date-input label="Tanggal Mulai" name="tanggal_mulai" required class="mb-0" x-model="tglMulai" x-on:change="if(tglMulai) { $refs.endInput.min = tglMulai; if(tglSelesai && tglSelesai < tglMulai) tglSelesai = tglMulai; }" x-ref="startInput" /></div>
+                    <div class="flex-1"><x-date-input label="Tanggal Selesai" name="tanggal_selesai" required class="mb-0" x-model="tglSelesai" x-on:change="if(tglSelesai) { $refs.startInput.max = tglSelesai; if(tglMulai && tglMulai > tglSelesai) tglMulai = tglSelesai; }" x-ref="endInput" /></div>
                 </div>
 
                 <div class="space-y-2">
@@ -320,6 +458,7 @@
 
             var filterKantor = document.getElementById('filter_kantor');
             var filterDivisi = document.getElementById('filter_divisi');
+            var filterNama = document.getElementById('filter_nama');
             var loading = document.getElementById('loading');
 
             if (window.jadwalCalendar) {
@@ -336,56 +475,93 @@
                     center: 'title',
                     right: 'dayGridMonth'
                 },
-                /* eventDidMount: function (info) {
-                    $(info.el).tooltip({
-                        title: info.event.extendedProps.description,
-                        placement: 'top',
-                        trigger: 'hover',
-                        container: 'body'
-                    });
-                }, */
+                buttonText: {
+                    today: 'Hari Ini',
+                    month: 'Bulan',
+                    list: 'Minggu'
+                },
+                eventDidMount: function (info) {
+                    if (info.event.extendedProps.description) {
+                        let contentHtml = `
+                            <div class="font-bold text-slate-800 mb-1 border-b border-slate-100 pb-1">${info.event.extendedProps.nama_user}</div>
+                            <div class="text-xs text-slate-500 mb-2">${info.event.extendedProps.kantor} &bull; ${info.event.extendedProps.jabatan}</div>
+                            <div class="text-[11px] leading-relaxed">
+                                ${info.event.extendedProps.description.replace(/\n/g, '<br>')}
+                            </div>
+                        `;
+
+                        if (info.event.extendedProps.is_holiday) {
+                            contentHtml = `
+                                <div class="font-bold text-red-600 border-b border-red-100 pb-1 mb-1">Libur Nasional</div>
+                                <div class="text-xs text-red-500">${info.event.extendedProps.keterangan}</div>
+                            `;
+                        }
+
+                        tippy(info.el, {
+                            content: contentHtml,
+                            allowHTML: true,
+                            animation: 'scale',
+                            theme: 'light-border',
+                            placement: 'top',
+                            zIndex: 9999
+                        });
+                    }
+                },
                 eventContent: function (arg) {
                     let contentEl = document.createElement('div');
 
+                    let classes = "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"; 
+                    let bg = arg.event.backgroundColor;
+
+                    if (bg === '#10b981') classes = "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100";
+                    else if (bg === '#3b82f6') classes = "bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100";
+                    else if (bg === '#f59e0b') classes = "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100";
+                    else if (bg === '#6b7280') classes = "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200";
+                    else if (bg === '#ef4444') classes = "bg-red-50 text-red-800 border-red-200 hover:bg-red-100";
+                    
+                    let isPoin = arg.event.extendedProps.is_poin;
+                    if (isPoin) classes = "bg-orange-50 text-orange-800 border-orange-200 hover:bg-orange-100";
+
                     if (arg.event.extendedProps.is_holiday) {
                         contentEl.innerHTML = `
-                                            <div style="background:#fef2f2; color:#dc2626; padding: 3px 6px; border-radius: 4px; border-left: 3px solid #ef4444; font-weight:700; font-size: 11px;">
-                                                ${arg.event.title}
-                                            </div>
-                                        `;
+                            <div class="bg-red-50 text-red-700 px-2 py-1.5 rounded-lg border border-red-200 font-bold text-[10px] flex items-center gap-1.5 w-full truncate shadow-sm">
+                                <span class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
+                                <span class="truncate">${arg.event.title}</span>
+                            </div>
+                        `;
                         return { domNodes: [contentEl] };
                     }
 
                     let jamMulai = arg.event.extendedProps.jam_mulai ? arg.event.extendedProps.jam_mulai.substring(0, 5) : '??:??';
                     let jamSelesai = arg.event.extendedProps.jam_selesai ? arg.event.extendedProps.jam_selesai.substring(0, 5) : '??:??';
 
-                    let isPoin = arg.event.extendedProps.is_poin;
-                    let originalMulai = arg.event.extendedProps.original_jam_mulai ? arg.event.extendedProps.original_jam_mulai.substring(0, 5) : jamMulai;
-                    let originalSelesai = arg.event.extendedProps.original_jam_selesai ? arg.event.extendedProps.original_jam_selesai.substring(0, 5) : jamSelesai;
-
-                    let bgColor = isPoin ? '#fff7ed' : 'transparent';
-                    let textColor = isPoin ? '#c2410c' : 'inherit';
-                    let borderLeft = isPoin ? '3px solid #f97316' : '';
-                    let titleStyle = isPoin ? 'font-weight:bold; color: #9a3412;' : 'font-weight:600;';
-                    let icon = isPoin ? '⚠️' : '';
-
-                    let timeHtml = `${jamMulai} - ${jamSelesai}`;
-
-                    if (isPoin) {
-                        timeHtml = `
-                                            <div style="text-decoration: line-through; color: #9ca3af; font-size: 0.8em;">${originalMulai} - ${originalSelesai}</div>
-                                            <div style="font-weight: bold; color: #c2410c;">${jamMulai} - ${jamSelesai} ${icon}</div>
-                                        `;
+                    if (arg.view.type === 'listWeek') {
+                        contentEl.innerHTML = `
+                            <div class="flex items-center gap-3 w-full py-2 px-1">
+                                <div class="w-3 h-3 rounded-full shadow-sm" style="background-color: ${bg};"></div>
+                                <div class="font-bold text-slate-800 text-sm whitespace-normal flex-1">
+                                    ${arg.event.extendedProps.nama_user}
+                                    <span class="font-normal text-xs text-slate-500 ml-2">(${arg.event.extendedProps.nama_shift})</span>
+                                </div>
+                                <div class="text-sm font-mono text-slate-600 font-semibold whitespace-nowrap">${jamMulai} - ${jamSelesai} ${isPoin?'⚠️':''}</div>
+                                <div class="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 whitespace-nowrap">${arg.event.extendedProps.kantor}</div>
+                            </div>
+                        `;
                     } else {
-                        timeHtml = `<div style="font-size: 0.85em;">${jamMulai} - ${jamSelesai}</div>`;
+                        // Month View - Premium Badge Design
+                        contentEl.innerHTML = `
+                            <div class="${classes} px-2 py-1.5 rounded-lg border text-left transition-all w-full flex flex-col gap-0.5 relative overflow-hidden group">
+                                ${isPoin ? '<div class="absolute right-1 top-1 text-[10px]">⚠️</div>' : ''}
+                                <div class="font-bold text-[11.5px] truncate leading-tight pr-3 w-full group-hover:opacity-80 transition-opacity">
+                                    ${arg.event.extendedProps.nama_user.split(' ')[0]}
+                                </div>
+                                <div class="text-[10px] font-mono font-medium opacity-80 tracking-tight flex items-center gap-1">
+                                    <svg class="w-2.5 h-2.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    ${jamMulai} - ${jamSelesai}
+                                </div>
+                            </div>
+                        `;
                     }
-
-                    contentEl.innerHTML = `
-                                        <div style="background:${bgColor}; color:${textColor}; border-left:${borderLeft}; padding: 2px 4px; border-radius: 4px;">
-                                            <div class="fc-event-title" style="${titleStyle}">${arg.event.title}</div>
-                                            ${timeHtml}
-                                        </div>
-                                    `;
 
                     return { domNodes: [contentEl] };
                 },
@@ -406,8 +582,9 @@
                     const params = new URLSearchParams({
                         start: info.startStr,
                         end: info.endStr,
-                        filter_kantor: filterKantor.value,
-                        filter_divisi: filterDivisi.value
+                        filter_kantor: filterKantor ? filterKantor.value : '',
+                        filter_divisi: filterDivisi ? filterDivisi.value : '',
+                        filter_nama: filterNama ? filterNama.value : ''
                     });
 
                     fetch("{{ route('jadwal.events') }}?" + params.toString())
@@ -458,9 +635,9 @@
                 dayMaxEvents: 2,
                 moreLinkClick: function (info) {
                     const events = info.allSegs.map(seg => seg.event);
-                    const date = info.date;
-
-                    openDetailHarian(date, events);
+                    
+                    // Alih-alih modal popover, isi tabel harian
+                    populateDailyTable(info.date, events);
                     return "function";
                 },
                 moreLinkText: 'lainnya',
@@ -478,6 +655,16 @@
             [filterKantor, filterDivisi].forEach(el => {
                 if (el) el.addEventListener('change', () => window.jadwalCalendar.refetchEvents());
             });
+
+            if (filterNama) {
+                let debounceTimer;
+                filterNama.addEventListener('keyup', () => {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => {
+                        if (window.jadwalCalendar) window.jadwalCalendar.refetchEvents();
+                    }, 500);
+                });
+            }
         }
 
         if (!window.__jadwalEventAttached) {

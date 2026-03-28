@@ -50,10 +50,10 @@ class LaporanLemburController extends Controller
             $menit = $totalMenit % 60;
 
             $rekap[$p->id] = [
-                'total_menit' => $totalMenit,
-                'format_jam' => "{$jam}j {$menit}m",
-                'jumlah_hari' => $p->lemburs->count(),
-                'poin_diperoleh' => $totalMenit,
+                'total_menit'    => $totalMenit,
+                'format_jam'     => "{$jam}j {$menit}m",
+                'jumlah_hari'    => $p->lemburs->count(),
+                'poin_diperoleh' => $p->lemburs->sum('jumlah_poin'),
             ];
         }
 
@@ -81,6 +81,12 @@ class LaporanLemburController extends Controller
 
         $pegawai = $query->orderBy('nama_lengkap', 'asc')->get();
 
+        // Guard: cek apakah ada data lembur di periode tersebut
+        $adaDataLembur = $pegawai->contains(fn($p) => $p->lemburs->isNotEmpty());
+        if (!$adaDataLembur) {
+            return redirect()->back()->with('error', 'Tidak ada data lembur yang disetujui untuk diekspor pada periode tersebut.');
+        }
+
         $rekap = [];
         foreach ($pegawai as $p) {
             $totalMenit = $p->lemburs->sum('durasi_menit');
@@ -88,10 +94,10 @@ class LaporanLemburController extends Controller
             $menit = $totalMenit % 60;
 
             $rekap[$p->id] = [
-                'total_menit' => $totalMenit,
-                'format_jam' => "{$jam}j {$menit}m",
-                'jumlah_hari' => $p->lemburs->count(),
-                'poin_diperoleh' => $totalMenit,
+                'total_menit'    => $totalMenit,
+                'format_jam'     => "{$jam}j {$menit}m",
+                'jumlah_hari'    => $p->lemburs->count(),
+                'poin_diperoleh' => $p->lemburs->sum('jumlah_poin'),
             ];
         }
 

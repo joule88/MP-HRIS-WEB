@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Data Kantor')
 
@@ -115,17 +115,17 @@
                 <label class="block text-sm font-semibold text-slate-700 mb-2">Tentukan Lokasi</label>
                 <div id="map-create"></div>
             </div>
-            <div class="grid grid-cols-2 gap-4">
-                <x-input label="Nama Kantor" name="nama_kantor" placeholder="Cth: Cabang Malang" required />
-                <x-select label="Tipe" name="tipe" required>
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1"><x-input label="Nama Kantor" name="nama_kantor" placeholder="Cth: Cabang Malang" required /></div>
+                <div class="flex-1"><x-select label="Tipe" name="tipe" required>
                     <option value="Cabang">Cabang</option>
                     <option value="Pusat">Pusat</option>
-                </x-select>
+                </x-select></div>
             </div>
-            <div class="grid grid-cols-3 gap-4">
-                <x-input label="Lat" name="latitude" id="create-lat" readonly required />
-                <x-input label="Long" name="longitude" id="create-long" readonly required />
-                <x-input type="number" label="Radius (m)" name="radius" id="create-radius" value="50" required />
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1"><x-input label="Lat" name="latitude" id="create-lat" readonly required /></div>
+                <div class="flex-1"><x-input label="Long" name="longitude" id="create-long" readonly required /></div>
+                <div class="w-full md:w-32"><x-input type="number" label="Radius (m)" name="radius" id="create-radius" value="50" required /></div>
             </div>
             <x-textarea label="Alamat" name="alamat" rows="2" />
             <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-2">
@@ -143,17 +143,17 @@
             <div class="mb-4">
                 <div id="map-edit"></div>
             </div>
-            <div class="grid grid-cols-2 gap-4">
-                <x-input label="Nama" name="nama_kantor" id="edit-nama" required />
-                <x-select label="Tipe" name="tipe" id="edit-tipe" required>
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1"><x-input label="Nama" name="nama_kantor" id="edit-nama" required /></div>
+                <div class="flex-1"><x-select label="Tipe" name="tipe" id="edit-tipe" required>
                     <option value="Cabang">Cabang</option>
                     <option value="Pusat">Pusat</option>
-                </x-select>
+                </x-select></div>
             </div>
-            <div class="grid grid-cols-3 gap-4">
-                <x-input label="Lat" name="latitude" id="edit-lat" readonly required />
-                <x-input label="Long" name="longitude" id="edit-long" readonly required />
-                <x-input type="number" label="Radius" name="radius" id="edit-radius" required />
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1"><x-input label="Lat" name="latitude" id="edit-lat" readonly required /></div>
+                <div class="flex-1"><x-input label="Long" name="longitude" id="edit-long" readonly required /></div>
+                <div class="w-full md:w-32"><x-input type="number" label="Radius (m)" name="radius" id="edit-radius" required /></div>
             </div>
             <x-textarea label="Alamat" name="alamat" id="edit-alamat" rows="2" />
             <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-2">

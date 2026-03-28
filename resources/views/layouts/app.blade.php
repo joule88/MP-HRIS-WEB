@@ -96,6 +96,7 @@
                 '/cuti': 'shimmer-presensi',
                 '/surat-izin': 'shimmer-presensi',
                 '/tukar-shift': 'shimmer-presensi',
+                '/notifikasi': 'shimmer-presensi',
             };
 
             function getShimmerId(url) {
@@ -251,7 +252,57 @@
                         </h2>
                     </div>
 
-                    <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-4 md:gap-6">
+
+                        {{-- Bell Notifikasi --}}
+                        <div class="relative" x-data="notifDropdown()" @click.away="open = false">
+                            <button @click="toggle()" class="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all duration-200">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                                </svg>
+                                <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold text-white bg-red-500 rounded-full ring-2 ring-white">0</span>
+                            </button>
+
+                            {{-- Dropdown Panel --}}
+                            <div x-show="open" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 translate-y-0 scale-100" x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+                                class="absolute right-0 mt-2 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200/60 overflow-hidden z-50" style="display: none;">
+
+                                <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                                    <div>
+                                        <h3 class="text-sm font-bold text-slate-800">Notifikasi</h3>
+                                        <p class="text-xs text-slate-400 mt-0.5" x-text="unreadCount > 0 ? unreadCount + ' belum dibaca' : 'Semua sudah dibaca'"></p>
+                                    </div>
+                                    <button x-show="unreadCount > 0" @click="markAllRead()" class="text-xs font-semibold text-primary hover:underline">Tandai semua dibaca</button>
+                                </div>
+
+                                <div class="max-h-80 overflow-y-auto" id="notif-dropdown-list">
+                                    <template x-if="items.length === 0">
+                                        <div class="px-5 py-10 text-center">
+                                            <svg class="w-12 h-12 mx-auto text-slate-200 mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" /></svg>
+                                            <p class="text-sm text-slate-400">Belum ada notifikasi</p>
+                                        </div>
+                                    </template>
+                                    <template x-for="item in items" :key="item.id">
+                                        <button @click="readItem(item)" class="w-full text-left px-5 py-3.5 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 flex gap-3" :class="{ 'bg-blue-50/40': !item.is_read }">
+                                            <div class="flex-shrink-0 mt-0.5">
+                                                <span class="w-9 h-9 rounded-lg flex items-center justify-center text-sm" :class="getIconClass(item.tipe)" x-html="getIcon(item.tipe)"></span>
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-semibold text-slate-800 truncate" x-text="item.judul"></p>
+                                                <p class="text-xs text-slate-500 mt-0.5 line-clamp-2" x-text="item.pesan"></p>
+                                                <p class="text-[11px] text-slate-400 mt-1" x-text="item.waktu"></p>
+                                            </div>
+                                            <span x-show="!item.is_read" class="flex-shrink-0 mt-2 w-2 h-2 rounded-full bg-blue-500"></span>
+                                        </button>
+                                    </template>
+                                </div>
+
+                                <a href="{{ route('notifikasi.index') }}" class="block px-5 py-3 text-center text-xs font-semibold text-primary hover:bg-slate-50 border-t border-slate-100 transition-colors" data-turbo="false">
+                                    Lihat Semua Notifikasi
+                                </a>
+                            </div>
+                        </div>
+
                         <div class="text-right hidden md:block">
                             <p class="text-sm font-bold text-slate-800">{{ Auth::user()->nama_lengkap ?? 'Guest' }}</p>
                             <p class="text-xs text-slate-500 font-medium">{{ Auth::user()->email ?? 'user@example.com'

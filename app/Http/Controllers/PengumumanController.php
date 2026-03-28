@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StorePengumumanRequest;
 use App\Http\Requests\UpdatePengumumanRequest;
 use App\Models\Pengumuman;
+use App\Services\NotifikasiService;
 use Illuminate\Support\Facades\Auth;
 
 class PengumumanController extends Controller
@@ -31,7 +32,14 @@ class PengumumanController extends Controller
         $data = $request->validated();
         $data['dibuat_oleh'] = Auth::id();
 
-        Pengumuman::create($data);
+        $pengumuman = Pengumuman::create($data);
+
+        app(NotifikasiService::class)->kirimBroadcast(
+            'pengumuman_baru',
+            '📢 Pengumuman Baru',
+            $pengumuman->judul,
+            ['id_pengumuman' => $pengumuman->id]
+        );
 
         return redirect()->route('pengumuman.index')
             ->with('success', 'Pengumuman berhasil ditambahkan.');

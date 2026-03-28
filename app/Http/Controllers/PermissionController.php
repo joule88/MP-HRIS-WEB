@@ -32,7 +32,18 @@ class PermissionController extends Controller
     public function sync(Request $request, $id_role)
     {
         $role = Role::findOrFail($id_role);
-        $role->permissions()->sync($request->permissions);
+
+        // Guard: role HRD tidak boleh kehilangan manage_permissions
+        if (strtolower($role->nama_role) === 'hrd') {
+            $managePermission = Permission::where('slug', 'manage_permissions')->first();
+            $selectedIds = collect($request->permissions ?? []);
+
+            if ($managePermission && !$selectedIds->contains($managePermission->id_permission)) {
+                return back()->with('error', 'Permission "manage_permissions" tidak boleh dicabut dari role HRD untuk mencegah lockout sistem.');
+            }
+        }
+
+        $role->permissions()->sync($request->permissions ?? []);
 
         return back()->with('success', 'Hak akses role berhasil diperbarui.');
     }

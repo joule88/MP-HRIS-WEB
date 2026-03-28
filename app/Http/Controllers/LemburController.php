@@ -6,6 +6,7 @@ use App\Models\Lembur;
 use App\Models\User;
 use App\Models\JenisKompensasi;
 use App\Services\LemburService;
+use App\Services\NotifikasiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -74,9 +75,25 @@ class LemburController extends Controller
                 if ($lembur->id_kompensasi == 2) {
                     $message .= ' Poin telah ditambahkan ke karyawan.';
                 }
+
+                app(NotifikasiService::class)->kirim(
+                    $lembur->id_user,
+                    'lembur_disetujui',
+                    'Lembur Disetujui',
+                    'Pengajuan lembur Anda pada tanggal ' . $lembur->tanggal_lembur . ' telah disetujui.',
+                    ['id_lembur' => $lembur->id_lembur]
+                );
             } else {
                 $this->lemburService->reject($lembur, $request->alasan_penolakan);
                 $message = 'Pengajuan lembur berhasil ditolak.';
+
+                app(NotifikasiService::class)->kirim(
+                    $lembur->id_user,
+                    'lembur_ditolak',
+                    'Lembur Ditolak',
+                    'Pengajuan lembur Anda pada tanggal ' . $lembur->tanggal_lembur . ' ditolak. Alasan: ' . ($request->alasan_penolakan ?? '-'),
+                    ['id_lembur' => $lembur->id_lembur]
+                );
             }
 
             return redirect()->back()->with('success', $message);

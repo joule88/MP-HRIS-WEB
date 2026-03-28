@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PenggunaanPoin;
 use App\Services\PoinService;
+use App\Services\NotifikasiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -39,7 +40,6 @@ class PenggunaanPoinController extends Controller
             if ($request->action == 'approve') {
                 DB::transaction(function () use ($penggunaan) {
                     $penggunaan->update(['id_status' => 2]);
-
                     $this->poinService->deductPoin(
                         $penggunaan->id_user,
                         $penggunaan->jumlah_poin,
@@ -47,12 +47,28 @@ class PenggunaanPoinController extends Controller
                     );
                 });
 
+                app(NotifikasiService::class)->kirim(
+                    $penggunaan->id_user,
+                    'poin_disetujui',
+                    'Penggunaan Poin Disetujui',
+                    'Pengajuan penggunaan poin Anda pada tanggal ' . $penggunaan->tanggal_penggunaan . ' telah disetujui.',
+                    ['id_penggunaan' => $penggunaan->id_penggunaan]
+                );
+
                 $message = 'Pengajuan berhasil disetujui dan poin telah dipotong.';
             } else {
                 $penggunaan->update([
                     'id_status' => 3,
                     'alasan_penolakan' => $request->alasan_penolakan
                 ]);
+
+                app(NotifikasiService::class)->kirim(
+                    $penggunaan->id_user,
+                    'poin_ditolak',
+                    'Penggunaan Poin Ditolak',
+                    'Pengajuan penggunaan poin Anda pada tanggal ' . $penggunaan->tanggal_penggunaan . ' ditolak.',
+                    ['id_penggunaan' => $penggunaan->id_penggunaan]
+                );
 
                 $message = 'Pengajuan berhasil ditolak.';
             }

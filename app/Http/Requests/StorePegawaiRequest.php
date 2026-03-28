@@ -15,7 +15,8 @@ class StorePegawaiRequest extends FormRequest
     {
         return [
             'nama_lengkap' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
+            'nik'          => ['nullable', 'string', 'max:50', 'unique:users,nik'],
+            'email'        => ['required', 'email', 'unique:users,email'],
             'no_telp' => ['nullable', 'string', 'max:20'],
             'alamat' => ['nullable', 'string'],
             'id_divisi' => ['required', 'exists:divisi,id_divisi'],

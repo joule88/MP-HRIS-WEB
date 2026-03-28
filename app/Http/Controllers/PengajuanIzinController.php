@@ -8,6 +8,7 @@ use App\Models\JenisIzin;
 use App\Models\User;
 use App\Models\SuratIzin;
 use App\Models\TandaTangan;
+use App\Services\NotifikasiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -67,8 +68,36 @@ class PengajuanIzinController extends Controller
             $diffParams = Carbon::parse($request->tanggal_mulai, 'Asia/Jakarta')->diffInDays(Carbon::now('Asia/Jakarta'));
 
             if (Carbon::parse($request->tanggal_mulai, 'Asia/Jakarta')->diffInDays(Carbon::now('Asia/Jakarta')) < 7) {
-                return back()->with('error', 'Pengajuan Cuti minimal H-7!');
+                return back()->withInput()->with('error', 'Pengajuan Cuti minimal H-7!');
             }
+        }
+
+        $tglMulai = $request->tanggal_mulai;
+        $tglSelesai = $request->tanggal_selesai;
+        $userId = $request->id_user;
+
+        $overlappingIzin = PengajuanIzin::where('id_user', $userId)
+            ->whereIn('id_status', [1, 2])
+            ->where(function ($q) use ($tglMulai, $tglSelesai) {
+                $q->whereBetween('tanggal_mulai', [$tglMulai, $tglSelesai])
+                  ->orWhereBetween('tanggal_selesai', [$tglMulai, $tglSelesai])
+                  ->orWhere(function ($q2) use ($tglMulai, $tglSelesai) {
+                      $q2->where('tanggal_mulai', '<=', $tglMulai)
+                         ->where('tanggal_selesai', '>=', $tglSelesai);
+                  });
+            })->exists();
+
+        if ($overlappingIzin) {
+            return back()->withInput()->with('error', 'Pegawai sudah memiliki pengajuan Izin/Cuti (Pending/Disetujui) pada rentang tanggal tersebut!');
+        }
+
+        $existingPresensi = \App\Models\Presensi::where('id_user', $userId)
+            ->whereBetween('tanggal', [$tglMulai, $tglSelesai])
+            ->whereNotNull('jam_masuk')
+            ->exists();
+
+        if ($existingPresensi) {
+            return back()->withInput()->with('error', 'Pegawai sudah tercatat melakukan absensi kehadiran pada rentang tanggal tersebut!');
         }
 
         try {
@@ -182,6 +211,15 @@ class PengajuanIzinController extends Controller
             }
 
             DB::commit();
+
+            app(NotifikasiService::class)->kirim(
+                $izin->id_user,
+                'izin_disetujui',
+                'Pengajuan Izin Disetujui',
+                'Pengajuan ' . $izin->jenisIzin->nama_izin . ' Anda telah disetujui.',
+                ['id_izin' => $izin->id_izin]
+            );
+
             return redirect()->back()->with('success', 'Izin disetujui & data presensi diperbarui.');
 
         } catch (\Exception $e) {
@@ -211,6 +249,14 @@ class PengajuanIzinController extends Controller
         $izin->update([
             'id_status' => 3
         ]);
+
+        app(NotifikasiService::class)->kirim(
+            $izin->id_user,
+            'izin_ditolak',
+            'Pengajuan Izin Ditolak',
+            'Pengajuan ' . ($izin->jenisIzin->nama_izin ?? 'Izin') . ' Anda ditolak.',
+            ['id_izin' => $izin->id_izin]
+        );
 
         return redirect()->back()->with('success', 'Pengajuan izin berhasil ditolak.');
     }

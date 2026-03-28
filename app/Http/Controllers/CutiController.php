@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\NotifikasiService;
 use Illuminate\Http\Request;
 
 class CutiController extends Controller
@@ -40,6 +41,13 @@ class CutiController extends Controller
             'sisa_cuti' => $request->sisa_cuti
         ]);
 
+        app(NotifikasiService::class)->kirim(
+            $user->id,
+            'update_cuti',
+            'Sisa Cuti Diperbarui',
+            'Sisa cuti Anda telah diperbarui menjadi ' . $request->sisa_cuti . ' hari.'
+        );
+
         return redirect()->back()->with('success', 'Sisa cuti ' . $user->nama_lengkap . ' berhasil diperbarui.');
     }
 
@@ -52,6 +60,12 @@ class CutiController extends Controller
         User::query()->update([
             'sisa_cuti' => $request->jumlah_hari
         ]);
+
+        app(NotifikasiService::class)->kirimBroadcast(
+            'reset_cuti',
+            'Sisa Cuti Di-reset',
+            'Sisa cuti Anda telah di-reset menjadi ' . $request->jumlah_hari . ' hari.'
+        );
 
         return redirect()->back()->with('success', 'Sisa cuti semua pegawai berhasil di-reset menjadi ' . $request->jumlah_hari . ' hari.');
     }

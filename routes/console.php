@@ -17,3 +17,7 @@ use Illuminate\Support\Facades\Artisan;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote')->hourly();
+
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('presensi:auto-alpha')->dailyAt('01:00')->timezone('Asia/Jakarta');

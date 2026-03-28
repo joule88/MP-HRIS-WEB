@@ -15,8 +15,14 @@ class LemburService
     {
         if (!isset($data['durasi_menit'])) {
             $start = Carbon::parse($data['jam_mulai']);
-            $end = Carbon::parse($data['jam_selesai']);
-            $diff = abs($start->diffInMinutes($end));
+            $end   = Carbon::parse($data['jam_selesai']);
+
+            // Handle shift malam yang melewati tengah malam (jam selesai < jam mulai)
+            if ($end->lessThanOrEqualTo($start)) {
+                $end->addDay();
+            }
+
+            $diff = $start->diffInMinutes($end);
         } else {
             $diff = $data['durasi_menit'];
         }

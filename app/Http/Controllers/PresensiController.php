@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Presensi;
 use App\Models\JadwalKerja;
 use App\Models\Kantor;
+use App\Services\NotifikasiService;
 use Illuminate\Http\Request;
 use App\Http\Requests\StorePresensiRequest;
 use App\Http\Requests\StoreManualPresensiRequest;
@@ -155,6 +156,14 @@ class PresensiController extends Controller
 
         $presensi->update(['id_validasi' => 1]);
 
+        app(NotifikasiService::class)->kirim(
+            $presensi->id_user,
+            'presensi_disetujui',
+            'Presensi Disetujui ✅',
+            'Presensi Anda pada tanggal ' . $presensi->tanggal . ' telah disetujui.',
+            ['id_presensi' => $presensi->id_presensi]
+        );
+
         return redirect()->back()->with('success', 'Presensi berhasil disetujui.');
     }
 
@@ -168,6 +177,14 @@ class PresensiController extends Controller
         }
 
         $presensi->update(['id_validasi' => 3]);
+
+        app(NotifikasiService::class)->kirim(
+            $presensi->id_user,
+            'presensi_ditolak',
+            'Presensi Ditolak ❌',
+            'Presensi Anda pada tanggal ' . $presensi->tanggal . ' ditolak. Silakan hubungi HRD.',
+            ['id_presensi' => $presensi->id_presensi]
+        );
 
         return redirect()->back()->with('success', 'Presensi berhasil ditolak.');
     }

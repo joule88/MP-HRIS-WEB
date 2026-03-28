@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Laporan Bulanan')
 
@@ -12,7 +12,7 @@
             <form method="GET" action="{{ route('laporan.index') }}"
                 class="flex flex-wrap gap-4 items-end mb-6 border-b border-slate-100 pb-6">
                 <div class="w-full md:w-40">
-                    <x-select label="Bulan" name="bulan">
+                    <x-select label="Bulan" name="bulan" class="!mb-0">
                         @for ($i = 1; $i <= 12; $i++)
                             <option value="{{ $i }}" {{ $bulan == $i ? 'selected' : '' }}>
                                 {{ DateTime::createFromFormat('!m', $i)->format('F') }}
@@ -21,14 +21,14 @@
                     </x-select>
                 </div>
                 <div class="w-full md:w-32">
-                    <x-select label="Tahun" name="tahun">
+                    <x-select label="Tahun" name="tahun" class="!mb-0">
                         @for ($y = date('Y'); $y >= date('Y') - 2; $y--)
                             <option value="{{ $y }}" {{ $tahun == $y ? 'selected' : '' }}>{{ $y }}</option>
                         @endfor
                     </x-select>
                 </div>
                 <div class="w-full md:w-48">
-                    <x-select label="Divisi" name="id_divisi">
+                    <x-select label="Divisi" name="id_divisi" class="!mb-0">
                         <option value="">Semua Divisi</option>
                         @foreach($divisiList as $div)
                             <option value="{{ $div->id_divisi }}" {{ $divisiId == $div->id_divisi ? 'selected' : '' }}>
@@ -37,8 +37,8 @@
                         @endforeach
                     </x-select>
                 </div>
-                <div class="w-full md:w-auto pb-0.5 flex gap-2">
-                    <x-button type="submit" variant="primary" class="h-[42px]">
+                <div class="w-full md:w-auto flex gap-2">
+                    <x-button type="submit" variant="primary" class="h-[44px]">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z">
@@ -47,7 +47,7 @@
                         Tampilkan
                     </x-button>
                     <a href="{{ route('laporan.export', ['bulan' => $bulan, 'tahun' => $tahun, 'id_divisi' => $divisiId]) }}" data-turbo="false"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border border-emerald-200 rounded-lg text-sm font-semibold transition-all h-[42px]">
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border border-emerald-200 rounded-lg text-sm font-semibold transition-all h-[44px]">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
@@ -57,7 +57,7 @@
                     
                     <a href="{{ route('laporan.exportPdf', ['bulan' => $bulan, 'tahun' => $tahun, 'id_divisi' => $divisiId]) }}" data-turbo="false"
                         target="_blank"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 border border-red-200 rounded-lg text-sm font-semibold transition-all h-[42px]">
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 border border-red-200 rounded-lg text-sm font-semibold transition-all h-[44px]">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>

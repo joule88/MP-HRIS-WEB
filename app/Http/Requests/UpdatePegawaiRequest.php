@@ -18,7 +18,8 @@ class UpdatePegawaiRequest extends FormRequest
 
         return [
             'nama_lengkap' => ['required', 'string', 'max:255'],
-            'email' => [
+            'nik'          => ['nullable', 'string', 'max:50', Rule::unique('users', 'nik')->ignore($id)],
+            'email'        => [
                 'required',
                 'email',
                 'unique:users,email,' . $this->route('pegawai')

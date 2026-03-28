@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Manajemen Role')
 
@@ -36,26 +36,39 @@
                 </x-slot>
 
                 @forelse($roles as $index => $role)
+                    @php
+                        $roleKritis = in_array(strtolower($role->nama_role), ['manajer', 'manager', 'supervisor', 'hrd', 'super_admin', 'staff']);
+                    @endphp
                     <tr class="hover:bg-slate-50 transition border-b border-slate-50 last:border-b-0">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{{ $roles->firstItem() + $index }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <x-badge color="blue">{{ $role->nama_role }}</x-badge>
+                            <div class="flex items-center gap-2">
+                                <x-badge color="blue">{{ $role->nama_role }}</x-badge>
+                                @if($roleKritis)
+                                    <span class="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Sistem</span>
+                                @endif
+                            </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-slate-600">{{ $role->users_count }}
                             Orang</td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="flex justify-end gap-2">
-                                
-                                <x-button-edit onclick="openEditModal(this)" 
-                                    data-id="{{ $role->id_role }}"
-                                    data-nama="{{ $role->nama_role }}"
-                                    data-permissions="{{ json_encode($role->permissions->pluck('id_permission')) }}" />
+                                @if($roleKritis)
+                                    <span class="px-3 py-1.5 text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-lg cursor-not-allowed" title="Role sistem tidak dapat diubah">
+                                        Terkunci
+                                    </span>
+                                @else
+                                    <x-button-edit onclick="openEditModal(this)" 
+                                        data-id="{{ $role->id_role }}"
+                                        data-nama="{{ $role->nama_role }}"
+                                        data-permissions="{{ json_encode($role->permissions->pluck('id_permission')) }}" />
 
-                                <x-delete-button :id="$role->id_role" />
-                                <form id="delete-form-{{ $role->id_role }}" action="{{ route('role.destroy', $role->id_role) }}"
-                                    method="POST" class="hidden">
-                                    @csrf @method('DELETE')
-                                </form>
+                                    <x-delete-button :id="$role->id_role" />
+                                    <form id="delete-form-{{ $role->id_role }}" action="{{ route('role.destroy', $role->id_role) }}"
+                                        method="POST" class="hidden">
+                                        @csrf @method('DELETE')
+                                    </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
