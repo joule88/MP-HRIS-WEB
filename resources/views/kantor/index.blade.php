@@ -3,29 +3,143 @@
 @section('title', 'Data Kantor')
 
 @section('style')
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.css" />
     <style>
         #map-create,
-        #map-edit {
+        #map-edit,
+        #map-detail {
             height: 300px !important;
             width: 100% !important;
             border-radius: 0.75rem;
             z-index: 1;
             border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        }
+        .map-search-wrapper {
+            position: relative;
+            margin-bottom: 10px;
+        }
+        .map-search-wrapper svg {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            color: #94a3b8;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .map-search-input {
+            width: 100%;
+            padding: 11px 14px 11px 40px;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.25s ease;
+            background: #f8fafc;
+            color: #334155;
+        }
+        .map-search-input::placeholder {
+            color: #94a3b8;
+        }
+        .map-search-input:focus {
+            border-color: #3b82f6;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+        .pac-container {
+            z-index: 99999 !important;
+            border-radius: 0.75rem;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            margin-top: 4px;
+            overflow: hidden;
+            font-family: inherit;
+        }
+        .pac-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            border-top: 1px solid #f1f5f9;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .pac-item:first-child {
+            border-top: none;
+        }
+        .pac-item:hover {
+            background: #f0f9ff;
+        }
+        .pac-item-selected {
+            background: #eff6ff;
+        }
+        .pac-icon {
+            margin-right: 8px;
+        }
+        .pac-item-query {
+            font-size: 13px;
+            color: #1e293b;
+            font-weight: 500;
+        }
+        .map-section-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 10px;
+        }
+        .map-section-label svg {
+            width: 16px;
+            height: 16px;
+            color: #3b82f6;
+        }
+        .coord-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border: 1px solid #e2e8f0;
+            color: #475569;
+        }
+        .coord-chip svg {
+            width: 12px;
+            height: 12px;
+            color: #3b82f6;
+        }
+        .detail-info-card {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 14px 16px;
+            border: 1px solid #f1f5f9;
+        }
+        .detail-info-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+        .detail-info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
         }
     </style>
 @endsection
 
 @section('script')
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google_maps.key') }}&libraries=places"></script>
     <script>
         window.kantorUpdateUrl = "{{ route('kantor.update', ':id') }}";
     </script>
-    <script src="{{ asset('js/kantor-map.js') }}"></script>
+    <script src="{{ asset('js/kantor-map.js') }}?v={{ time() }}"></script>
 @endsection
 
 @section('content')
@@ -60,10 +174,13 @@
                             </div>
                         </td>
                         <td class="px-6 py-4 text-left">
-                            <code
-                                class="text-[11px] font-mono bg-slate-100 px-2 py-1 rounded border border-slate-200 text-slate-600">
-                                        {{ number_format($k->latitude, 5) }}, {{ number_format($k->longitude, 5) }}
-                                    </code>
+                            <span class="coord-chip">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                    <circle cx="12" cy="10" r="3"/>
+                                </svg>
+                                {{ number_format($k->latitude, 5) }}, {{ number_format($k->longitude, 5) }}
+                            </span>
                         </td>
                         <td class="px-6 py-4 text-center">
                             <x-badge color="blue">
@@ -108,11 +225,24 @@
         </div>
     </div>
 
+    {{-- Modal Tambah Kantor --}}
     <x-modal name="create-kantor" title="Tambah Lokasi Kantor">
         <form action="{{ route('kantor.store') }}" method="POST">
             @csrf
             <div class="mb-4">
-                <label class="block text-sm font-semibold text-slate-700 mb-2">Tentukan Lokasi</label>
+                <div class="map-section-label">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    Tentukan Lokasi
+                </div>
+                <div class="map-search-wrapper">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <input type="text" id="search-create" class="map-search-input" placeholder="Cari lokasi... (contoh: Jl. Merdeka, Malang)" autocomplete="off">
+                </div>
                 <div id="map-create"></div>
             </div>
             <div class="flex flex-col md:flex-row gap-4">
@@ -123,8 +253,8 @@
                 </x-select></div>
             </div>
             <div class="flex flex-col md:flex-row gap-4">
-                <div class="flex-1"><x-input label="Lat" name="latitude" id="create-lat" readonly required /></div>
-                <div class="flex-1"><x-input label="Long" name="longitude" id="create-long" readonly required /></div>
+                <div class="flex-1"><x-input label="Latitude" name="latitude" id="create-lat" readonly required /></div>
+                <div class="flex-1"><x-input label="Longitude" name="longitude" id="create-long" readonly required /></div>
                 <div class="w-full md:w-32"><x-input type="number" label="Radius (m)" name="radius" id="create-radius" value="50" required /></div>
             </div>
             <x-textarea label="Alamat" name="alamat" rows="2" />
@@ -137,10 +267,17 @@
         </form>
     </x-modal>
 
+    {{-- Modal Edit Kantor --}}
     <x-modal name="edit-kantor" title="Edit Data Kantor">
         <form id="form-edit" action="#" method="POST">
             @csrf @method('PUT')
             <div class="mb-4">
+                <div class="map-search-wrapper">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <input type="text" id="search-edit" class="map-search-input" placeholder="Cari lokasi..." autocomplete="off">
+                </div>
                 <div id="map-edit"></div>
             </div>
             <div class="flex flex-col md:flex-row gap-4">
@@ -151,8 +288,8 @@
                 </x-select></div>
             </div>
             <div class="flex flex-col md:flex-row gap-4">
-                <div class="flex-1"><x-input label="Lat" name="latitude" id="edit-lat" readonly required /></div>
-                <div class="flex-1"><x-input label="Long" name="longitude" id="edit-long" readonly required /></div>
+                <div class="flex-1"><x-input label="Latitude" name="latitude" id="edit-lat" readonly required /></div>
+                <div class="flex-1"><x-input label="Longitude" name="longitude" id="edit-long" readonly required /></div>
                 <div class="w-full md:w-32"><x-input type="number" label="Radius (m)" name="radius" id="edit-radius" required /></div>
             </div>
             <x-textarea label="Alamat" name="alamat" id="edit-alamat" rows="2" />
@@ -164,38 +301,44 @@
             </div>
         </form>
     </x-modal>
+
+    {{-- Modal Detail Kantor --}}
     <x-modal name="detail-kantor" title="Detail Lokasi Kantor">
-        <div class="p-1 space-y-4">
-            <div id="map-detail" class="h-64 rounded-xl border border-slate-200 mb-4"></div>
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nama Kantor</label>
-                    <p id="detail-nama" class="text-slate-800 font-bold"></p>
+        <div class="space-y-4">
+            <div id="map-detail" class="rounded-xl border border-slate-200"></div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="detail-info-card">
+                    <div class="detail-info-label">Nama Kantor</div>
+                    <p id="detail-nama" class="detail-info-value"></p>
                 </div>
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tipe</label>
-                    <p id="detail-tipe" class="text-slate-800"></p>
-                </div>
-            </div>
-            <div class="grid grid-cols-3 gap-4">
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Latitude</label>
-                    <p id="detail-lat" class="text-slate-800 font-mono text-xs"></p>
-                </div>
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Longitude</label>
-                    <p id="detail-long" class="text-slate-800 font-mono text-xs"></p>
-                </div>
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Radius</label>
-                    <p id="detail-radius" class="text-slate-800"></p>
+                <div class="detail-info-card">
+                    <div class="detail-info-label">Tipe Kantor</div>
+                    <p id="detail-tipe" class="detail-info-value"></p>
                 </div>
             </div>
-            <div>
-                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Alamat</label>
-                <p id="detail-alamat" class="text-slate-700 text-sm leading-relaxed"></p>
+
+            <div class="grid grid-cols-3 gap-3">
+                <div class="detail-info-card">
+                    <div class="detail-info-label">Latitude</div>
+                    <p id="detail-lat" class="detail-info-value font-mono text-xs"></p>
+                </div>
+                <div class="detail-info-card">
+                    <div class="detail-info-label">Longitude</div>
+                    <p id="detail-long" class="detail-info-value font-mono text-xs"></p>
+                </div>
+                <div class="detail-info-card">
+                    <div class="detail-info-label">Radius</div>
+                    <p id="detail-radius" class="detail-info-value text-blue-600"></p>
+                </div>
             </div>
-            <div class="flex justify-end pt-4 border-t border-slate-100">
+
+            <div class="detail-info-card">
+                <div class="detail-info-label">Alamat Lengkap</div>
+                <p id="detail-alamat" class="text-slate-700 text-sm leading-relaxed mt-1"></p>
+            </div>
+
+            <div class="flex justify-end pt-3 border-t border-slate-100">
                 <button type="button" x-data @click="$dispatch('close-modal', 'detail-kantor')"
                     class="px-5 py-2 text-sm bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition shadow-sm">Tutup</button>
             </div>

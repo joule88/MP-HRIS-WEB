@@ -169,6 +169,7 @@ class PresensiController extends Controller
                 'foto' => 'required|image|max:2048',
                 'status' => 'required|in:masuk,pulang',
                 'keterangan_luar_radius' => 'nullable|string|max:500',
+                'alasan_telat' => 'nullable|string|max:500',
             ]);
 
             $user = Auth::user();
@@ -277,6 +278,12 @@ class PresensiController extends Controller
                     'verifikasi_wajah' => (bool) $item->verifikasi_wajah,
                     'status_validasi' => $item->id_validasi,
                     'alasan_penolakan' => $item->alasan_penolakan,
+                    'foto_masuk_url' => $item->foto_wajah_masuk
+                        ? asset('storage/' . $item->foto_wajah_masuk)
+                        : null,
+                    'foto_pulang_url' => $item->foto_wajah_pulang
+                        ? asset('storage/' . $item->foto_wajah_pulang)
+                        : null,
                 ];
             });
 

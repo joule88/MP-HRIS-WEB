@@ -16,7 +16,7 @@ class PoinController extends Controller
     public function getExpiringPoints()
     {
         try {
-            $userId = auth()->user()->id;
+            $userId = auth()->id();
 
             $poinService = new PoinService();
             $poinExpiring = $poinService->getExpiringPoints($userId);
@@ -45,7 +45,7 @@ class PoinController extends Controller
     public function getPointHistory()
     {
         try {
-            $userId = auth()->user()->id;
+            $userId = auth()->id();
 
             $poinService = new PoinService();
             $history = $poinService->getPointHistory($userId);
@@ -72,7 +72,7 @@ class PoinController extends Controller
         }
 
         try {
-            $userId = auth()->user()->id;
+            $userId = auth()->id();
             $jumlah = $request->jumlah;
             $keterangan = $request->keterangan;
 
@@ -85,6 +85,21 @@ class PoinController extends Controller
 
             preg_match('/\[(\d{4}-\d{2}-\d{2})\]/', $keterangan, $matches);
             $tanggalPenggunaan = isset($matches[1]) ? $matches[1] : now()->format('Y-m-d');
+
+            $jadwal = \App\Models\JadwalKerja::with('shift')
+                ->where('id_user', $userId)
+                ->where('tanggal', $tanggalPenggunaan)
+                ->first();
+
+            if (!$jadwal || !$jadwal->shift) {
+                return ApiResponse::error('Jadwal kerja tidak ditemukan untuk tanggal ' . Carbon::parse($tanggalPenggunaan)->format('d/m/Y') . '.', 400);
+            }
+
+            $waktuBatasPengajuan = Carbon::parse($tanggalPenggunaan . ' ' . $jadwal->shift->jam_mulai)->subHour();
+
+            if (now()->greaterThan($waktuBatasPengajuan)) {
+                return ApiResponse::error('Pengajuan poin harus dilakukan maksimal 1 jam sebelum jam kerja dimulai (Batas: ' . $waktuBatasPengajuan->format('d/m/Y H:i') . ').', 400);
+            }
 
             PenggunaanPoin::create([
                 'id_user' => $userId,

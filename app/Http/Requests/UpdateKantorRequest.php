@@ -15,6 +15,7 @@ class UpdateKantorRequest extends FormRequest
     {
         return [
             'nama_kantor' => ['required', 'string', 'max:255'],
+            'tipe'        => ['required', 'string', 'in:Pusat,Cabang'],
             'alamat'      => ['nullable', 'string'],
 
             'latitude'    => ['required', 'numeric', 'between:-90,90'],
