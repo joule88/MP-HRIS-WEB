@@ -30,14 +30,23 @@ class SubmissionController extends Controller
 
             $jenisIzin = JenisIzin::find($request->id_jenis_izin);
             if ($jenisIzin && $jenisIzin->nama_izin == 'Cuti') {
-                // Validasi sisa cuti
+                $tanggalMulai = Carbon::parse($request->tanggal_mulai);
+                $tanggalSelesai = Carbon::parse($request->tanggal_selesai);
+                $jumlahHari = $tanggalMulai->diffInDays($tanggalSelesai) + 1;
+
                 if ($user->sisa_cuti <= 0) {
                     return ApiResponse::error('Sisa cuti Anda sudah habis (0 hari). Pengajuan cuti tidak dapat dilanjutkan.', 400);
                 }
 
-                $tanggalMulai = Carbon::parse($request->tanggal_mulai);
-                $minDate = Carbon::now()->addDays(7)->startOfDay();
+                if ($jumlahHari > 3) {
+                    return ApiResponse::error('Pengajuan cuti maksimal 3 hari berturut-turut dalam satu pengajuan.', 400);
+                }
 
+                if ($jumlahHari > $user->sisa_cuti) {
+                    return ApiResponse::error("Sisa cuti Anda tidak mencukupi. Sisa: {$user->sisa_cuti} hari, diajukan: {$jumlahHari} hari.", 400);
+                }
+
+                $minDate = Carbon::now()->addDays(7)->startOfDay();
                 if ($tanggalMulai->lt($minDate)) {
                     return ApiResponse::error('Pengajuan Cuti minimal H-7!', 400);
                 }
@@ -255,7 +264,7 @@ class SubmissionController extends Controller
     public function history(Request $request)
     {
         try {
-            $query = PengajuanIzin::with(['jenisIzin', 'statusPengajuan'])
+            $query = PengajuanIzin::with(['jenisIzin', 'statusPengajuan', 'suratIzin'])
                 ->where('id_user', Auth::id());
 
             if ($request->has('status')) {
@@ -274,6 +283,16 @@ class SubmissionController extends Controller
             }
 
             $history = $query->orderBy('created_at', 'desc')->paginate(10);
+
+            $history->getCollection()->transform(function ($item) {
+                $item->bukti_file_url = $item->bukti_file
+                    ? asset('storage/' . $item->bukti_file)
+                    : null;
+                $item->has_surat = $item->suratIzin !== null;
+                $item->id_surat = $item->suratIzin?->id_surat;
+                unset($item->suratIzin);
+                return $item;
+            });
 
             return ApiResponse::success($history);
 

@@ -3,15 +3,9 @@
 @section('title', 'Dashboard')
 
 @section('content')
-    <div class="mb-8">
-        <h1 class="text-2xl font-bold text-slate-800">
-            {{ \Carbon\Carbon::now('Asia/Jakarta')->hour < 12 ? 'Selamat Pagi' : (\Carbon\Carbon::now('Asia/Jakarta')->hour < 15 ? 'Selamat Siang' : 'Selamat Sore') }},
-            {{ Auth::user()->nama_lengkap }}! 👋
-        </h1>
-        <p class="text-slate-500 mt-1 text-sm font-medium">
-            {{ \Carbon\Carbon::now('Asia/Jakarta')->translatedFormat('l, d F Y') }}
-        </p>
-    </div>
+    <x-page-header
+        title="{{ Carbon\Carbon::now('Asia/Jakarta')->hour < 12 ? 'Selamat Pagi' : (Carbon\Carbon::now('Asia/Jakarta')->hour < 15 ? 'Selamat Siang' : 'Selamat Sore') }}, {{ Auth::user()->nama_lengkap }}! 👋"
+        subtitle="{{ Carbon\Carbon::now('Asia/Jakarta')->translatedFormat('l, d F Y') }}" />
 
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6 mb-8">
         

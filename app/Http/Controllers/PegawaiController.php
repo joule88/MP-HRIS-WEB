@@ -200,11 +200,21 @@ class PegawaiController extends Controller
 
         $historyPoin = $historyTambah->concat($historyKurang)->sortByDesc('tanggal')->take(10);
 
-        $riwayatPresensi = \App\Models\Presensi::with(['status', 'jadwal.shift'])
+        $riwayatPresensi = \App\Models\Presensi::with(['status'])
             ->where('id_user', $id)
             ->whereDate('tanggal', '>=', now()->subDays(30)->toDateString())
             ->orderBy('tanggal', 'desc')
             ->get();
+
+        $jadwalKerja = \App\Models\JadwalKerja::with('shift')
+            ->where('id_user', $id)
+            ->whereIn('tanggal', $riwayatPresensi->pluck('tanggal'))
+            ->get()
+            ->keyBy('tanggal');
+
+        foreach ($riwayatPresensi as $presensi) {
+            $presensi->setRelation('jadwal', $jadwalKerja->get($presensi->tanggal));
+        }
 
         $riwayatIzin = \App\Models\PengajuanIzin::with('jenisIzin')
             ->where('id_user', $id)
@@ -237,5 +247,19 @@ class PegawaiController extends Controller
         $pegawai->update(['status_aktif' => 0]);
 
         return redirect()->route('pegawai.index')->with('success', 'Status pegawai telah diubah menjadi Non-Aktif (Resigned). Histori data tetap tersimpan.');
+    }
+    public function resetPassword($id)
+    {
+        $pegawai = User::findOrFail($id);
+
+        $defaultPassword = 'Mpg123!';
+        $pegawai->update([
+            'password' => Hash::make($defaultPassword),
+        ]);
+
+        $pegawai->tokens()->delete();
+
+        return redirect()->route('pegawai.show', $id)
+            ->with('success', "Password {$pegawai->nama_lengkap} berhasil direset ke default (Mpg123!).");
     }
 }

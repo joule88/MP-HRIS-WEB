@@ -1,13 +1,9 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Riwayat Tukar Shift')
 
 @section('content')
     <div class="space-y-6">
-
-        <div class="flex justify-between items-center sm:hidden mb-4">
-            <h1 class="text-2xl font-bold text-slate-800">Riwayat Tukar Shift</h1>
-        </div>
 
         <x-page-header title="Riwayat Tukar Shift" subtitle="Daftar log eksekusi penukaran jadwal kerja antar pegawai.">
             <div class="flex gap-2">
@@ -24,7 +20,7 @@
 
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <x-table>
-                <x-slot name="header">
+                <x-slot:header>
                     <tr>
                         <th scope="col" class="px-6 py-4 text-left font-semibold text-slate-600">Terjadi Pada</th>
                         <th scope="col" class="px-6 py-4 text-left font-semibold text-slate-600">Pegawai 1</th>

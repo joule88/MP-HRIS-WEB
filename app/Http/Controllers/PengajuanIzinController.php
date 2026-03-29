@@ -65,7 +65,18 @@ class PengajuanIzinController extends Controller
 
         $jenisIzin = JenisIzin::find($request->id_jenis_izin);
         if ($jenisIzin && $jenisIzin->nama_izin == 'Cuti') {
-            $diffParams = Carbon::parse($request->tanggal_mulai, 'Asia/Jakarta')->diffInDays(Carbon::now('Asia/Jakarta'));
+            $pegawai = User::find($request->id_user);
+            $tanggalMulai = Carbon::parse($request->tanggal_mulai);
+            $tanggalSelesai = Carbon::parse($request->tanggal_selesai);
+            $jumlahHari = $tanggalMulai->diffInDays($tanggalSelesai) + 1;
+
+            if ($jumlahHari > 3) {
+                return back()->withInput()->with('error', 'Pengajuan cuti maksimal 3 hari berturut-turut dalam satu pengajuan.');
+            }
+
+            if ($pegawai && $pegawai->sisa_cuti < $jumlahHari) {
+                return back()->withInput()->with('error', "Sisa cuti pegawai tidak mencukupi. Sisa: {$pegawai->sisa_cuti} hari, diajukan: {$jumlahHari} hari.");
+            }
 
             if (Carbon::parse($request->tanggal_mulai, 'Asia/Jakarta')->diffInDays(Carbon::now('Asia/Jakarta')) < 7) {
                 return back()->withInput()->with('error', 'Pengajuan Cuti minimal H-7!');
@@ -207,7 +218,8 @@ class PengajuanIzinController extends Controller
             if ($izin->id_jenis_izin == 2) {
                 $user = \App\Models\User::find($izin->id_user);
                 $jumlahHari = Carbon::parse($izin->tanggal_mulai)->diffInDays(Carbon::parse($izin->tanggal_selesai)) + 1;
-                $user->decrement('sisa_cuti', $jumlahHari);
+                $newSisa = max(0, ($user->sisa_cuti ?? 0) - $jumlahHari);
+                $user->update(['sisa_cuti' => $newSisa]);
             }
 
             DB::commit();

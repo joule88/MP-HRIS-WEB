@@ -105,6 +105,61 @@ class PresensiController extends Controller
         ]);
     }
 
+    public function checkRadius(Request $request)
+    {
+        try {
+            $request->validate([
+                'latitude' => 'required|numeric',
+                'longitude' => 'required|numeric',
+            ]);
+
+            $user = Auth::user();
+            $kantor = $user->kantor;
+
+            if (!$kantor) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Data kantor belum disetting.',
+                ], 400);
+            }
+
+            $distance = $this->calculateDistance(
+                $request->latitude,
+                $request->longitude,
+                $kantor->latitude,
+                $kantor->longitude,
+            );
+
+            $isWithinRadius = $distance <= $kantor->radius;
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'is_within_radius' => $isWithinRadius,
+                    'distance' => round($distance, 2),
+                    'radius' => $kantor->radius,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function calculateDistance($lat1, $lon1, $lat2, $lon2)
+    {
+        $earthRadius = 6371000;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+            sin($dLon / 2) * sin($dLon / 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return $earthRadius * $c;
+    }
+
     public function store(Request $request)
     {
         try {
@@ -138,11 +193,16 @@ class PresensiController extends Controller
     {
         try {
             $userId = Auth::id();
-            $history = Presensi::where('id_user', $userId)
-                ->latest('tanggal')
-                ->paginate(10);
+            $month = $request->get('month', Carbon::now('Asia/Jakarta')->month);
+            $year = $request->get('year', Carbon::now('Asia/Jakarta')->year);
 
-            $enriched = $history->getCollection()->map(function ($item) use ($userId) {
+            $history = Presensi::where('id_user', $userId)
+                ->whereMonth('tanggal', $month)
+                ->whereYear('tanggal', $year)
+                ->latest('tanggal')
+                ->get();
+
+            $enriched = $history->map(function ($item) use ($userId) {
                 $jadwal = \App\Models\JadwalKerja::with('shift')
                     ->where('id_user', $userId)
                     ->where('tanggal', $item->tanggal)
@@ -220,9 +280,11 @@ class PresensiController extends Controller
                 ];
             });
 
-            $history->setCollection($enriched);
-
-            return ApiResponse::success($history);
+            return ApiResponse::success([
+                'data' => $enriched->values(),
+                'month' => (int) $month,
+                'year' => (int) $year,
+            ]);
 
         } catch (\Exception $e) {
             return ApiResponse::error($e->getMessage(), 500);

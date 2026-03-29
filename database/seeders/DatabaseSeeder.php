@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             JenisIzinSeeder::class,
             StatusPengajuanSeeder::class,
             JenisPenguranganSeeder::class,
+            JenisKompensasiSeeder::class,
 
             // 4. Data dummy (opsional, comment jika tidak diperlukan di production)
             // PresensiSeeder::class,

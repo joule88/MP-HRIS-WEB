@@ -64,10 +64,13 @@ class SuratIzinController extends Controller
         $canApprove = false;
         $tahapApproval = null;
 
-        if ($surat->status_surat === 'menunggu_manajer' && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
+        // Cegah user yang sama menandatangani di dua tahap berbeda
+        $sudahApprove = $surat->approvals->contains('id_approver', $user->id);
+
+        if (!$sudahApprove && $surat->status_surat === 'menunggu_manajer' && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
             $canApprove = true;
             $tahapApproval = 1;
-        } elseif ($surat->status_surat === 'menunggu_hrd' && ($user->roles->contains('nama_role', 'hrd') || $isGlobalAdmin)) {
+        } elseif (!$sudahApprove && $surat->status_surat === 'menunggu_hrd' && ($user->roles->contains('nama_role', 'hrd') || $isGlobalAdmin)) {
             $canApprove = true;
             $tahapApproval = 2;
         }
@@ -94,6 +97,15 @@ class SuratIzinController extends Controller
             }
 
             $tahap = null;
+
+            // Cegah approver yang sama menandatangani di dua posisi berbeda
+            $sudahApprove = ApprovalSurat::where('id_surat', $surat->id_surat)
+                ->where('id_approver', $user->id)
+                ->exists();
+
+            if ($sudahApprove) {
+                return redirect()->back()->with('error', 'Anda sudah menyetujui surat ini sebelumnya dan tidak dapat menandatangani di posisi lain.');
+            }
 
             if ($surat->status_surat === 'menunggu_manajer' && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
                 $tahap = 1;
@@ -175,6 +187,15 @@ class SuratIzinController extends Controller
             }
 
             $tahap = null;
+
+            // Cegah approver yang sama menandatangani di dua posisi berbeda
+            $sudahApprove = ApprovalSurat::where('id_surat', $surat->id_surat)
+                ->where('id_approver', $user->id)
+                ->exists();
+
+            if ($sudahApprove) {
+                return redirect()->back()->with('error', 'Anda sudah menyetujui surat ini sebelumnya dan tidak dapat menolak di posisi lain.');
+            }
 
             if ($surat->status_surat === 'menunggu_manajer' && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
                 $tahap = 1;
@@ -258,7 +279,8 @@ class SuratIzinController extends Controller
         if ($izin->id_jenis_izin == 2) {
             $user = \App\Models\User::find($izin->id_user, ['*']);
             $jumlahHari = Carbon::parse($izin->tanggal_mulai)->diffInDays(Carbon::parse($izin->tanggal_selesai)) + 1;
-            $user->decrement('sisa_cuti', $jumlahHari);
+            $newSisa = max(0, ($user->sisa_cuti ?? 0) - $jumlahHari);
+            $user->update(['sisa_cuti' => $newSisa]);
         }
     }
 }

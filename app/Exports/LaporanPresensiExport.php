@@ -154,6 +154,10 @@ class LaporanPresensiExport implements FromCollection, WithHeadings, WithMapping
                 $lastRow  = count($this->rekap) + 6;
                 $dataStart = 7;
 
+                $sheet->getParent()->getDefaultStyle()->getFont()
+                    ->setName('Calibri')
+                    ->setSize(10);
+
                 // Merge judul
                 $sheet->mergeCells('A1:K1');
                 $sheet->mergeCells('A2:K2');

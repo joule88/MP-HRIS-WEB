@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Data Karyawan')
 
@@ -6,7 +6,7 @@
     <div class="max-w-7xl mx-auto space-y-8">
 
         <div>
-            <h1 class="text-2xl font-bold text-slate-800 mb-6">Data Karyawan</h1>
+            <x-page-header title="Data Karyawan" subtitle="Kelola data pegawai perusahaan." class="mb-6" />
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 @foreach($stats['kantor_list'] as $kantor)
@@ -200,8 +200,4 @@
             <x-pagination :paginator="$pegawai" />
         </div>
     </div>
-@endsection
-
-@section('script')
-    <script src="{{ asset('js/notifications.js') }}"></script>
 @endsection

@@ -1,11 +1,10 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
+
+@section('title', 'Manajemen Hak Akses')
 
 @section('content')
 <div class="space-y-6">
-    <div>
-        <h1 class="text-2xl font-bold text-slate-800">Manajemen Hak Akses</h1>
-        <p class="text-sm text-slate-500">Konfigurasi izin spesifik untuk setiap peran pengguna.</p>
-    </div>
+    <x-page-header title="Manajemen Hak Akses" subtitle="Konfigurasi izin spesifik untuk setiap peran pengguna." />
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div class="lg:col-span-1 space-y-6">

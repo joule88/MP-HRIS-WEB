@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Lembur')
 
@@ -26,22 +26,22 @@
             </x-slot:header>
 
             @forelse ($lembur as $index => $item)
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-6 py-4 text-sm text-gray-700">
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 text-sm text-slate-700">
                         {{ $lembur->firstItem() + $index }}
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-700">
+                    <td class="px-6 py-4 text-sm text-slate-700">
                         {{ \Carbon\Carbon::parse($item->tanggal_lembur)->translatedFormat('d F Y') }}
-                        <div class="text-xs text-gray-500">
+                        <div class="text-xs text-slate-500">
                             {{ \Carbon\Carbon::parse($item->jam_mulai)->format('H:i') }} -
                             {{ \Carbon\Carbon::parse($item->jam_selesai)->format('H:i') }}
                         </div>
                     </td>
                     <td class="px-6 py-4">
-                        <div class="text-sm font-medium text-gray-900">{{ $item->user->nama_lengkap ?? '-' }}</div>
-                        <div class="text-xs text-gray-500">{{ $item->user->jabatan->nama_jabatan ?? '' }}</div>
+                        <div class="text-sm font-medium text-slate-900">{{ $item->user->nama_lengkap ?? '-' }}</div>
+                        <div class="text-xs text-slate-500">{{ $item->user->jabatan->nama_jabatan ?? '' }}</div>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-700">
+                    <td class="px-6 py-4 text-sm text-slate-700">
                         {{ $item->durasi_menit }} Menit
                     </td>
                     <td class="px-6 py-4">
@@ -51,7 +51,7 @@
                             <x-badge color="green">💵 Uang</x-badge>
                         @endif
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-700">
+                    <td class="px-6 py-4 text-sm text-slate-700">
                         {{ Str::limit($item->keterangan, 30) }}
                     </td>
                     <td class="px-6 py-4">
@@ -91,7 +91,7 @@
                                 </button>
                             </div>
                         @else
-                            <span class="text-xs text-gray-400 italic">Selesai</span>
+                            <span class="text-xs text-slate-400 italic">Selesai</span>
                         @endif
                     </td>
                 </tr>
@@ -114,7 +114,7 @@
                     placeholder="Jelaskan alasan kenapa pengajuan ini ditolak..." required rows="3" />
             </div>
 
-            <div class="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-4">
+            <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
                 <x-button type="button" variant="secondary" x-data
                     @click="$dispatch('close-modal', 'reject-modal')">Batal</x-button>
                 <x-button type="submit" class="bg-red-600 hover:bg-red-700 text-white">Tolak Pengajuan</x-button>

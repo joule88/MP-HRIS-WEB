@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Detail Pegawai')
 
@@ -102,6 +102,23 @@
                             <p class="text-sm font-medium text-slate-800">
                                 {{ \Carbon\Carbon::parse($pegawai->tgl_bergabung)->translatedFormat('d F Y') }}</p>
                         </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Aksi Cepat</h4>
+                    <div class="space-y-3">
+                        <button type="button"
+                            onclick="confirmAction(event, 'reset-password-form', 'Password akan direset ke default (Mpg123!). Pegawai harus login ulang setelah reset.', '#f59e0b', 'Ya, Reset Password')"
+                            class="w-full flex items-center gap-3 px-4 py-3 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl hover:bg-amber-100 transition text-sm font-semibold">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                            </svg>
+                            Reset Password
+                        </button>
+                        <form id="reset-password-form" action="{{ route('pegawai.reset-password', $pegawai->id) }}" method="POST" class="hidden">
+                            @csrf
+                        </form>
                     </div>
                 </div>
             </div>
@@ -238,11 +255,11 @@
                                     </td>
                                     <td class="px-6 py-4 text-sm text-slate-600 text-center whitespace-nowrap">
                                         {{ $presensi->jadwal->shift->nama_shift ?? 'Shift Default' }}<br>
-                                        <span class="text-xs text-slate-400">{{ substr($presensi->jadwal->jam_masuk ?? '08:00', 0, 5) }} - {{ substr($presensi->jadwal->jam_pulang ?? '17:00', 0, 5) }}</span>
+                                        <span class="text-xs text-slate-400">{{ substr($presensi->jadwal->shift->jam_mulai ?? '08:00', 0, 5) }} - {{ substr($presensi->jadwal->shift->jam_selesai ?? '17:00', 0, 5) }}</span>
                                     </td>
                                     <td class="px-6 py-4 text-center whitespace-nowrap">
                                         <div class="flex flex-col text-sm items-center justify-center">
-                                            <span class="font-mono font-bold {{ $presensi->jam_masuk > ($presensi->jadwal->jam_masuk ?? '08:00') ? 'text-red-600' : 'text-emerald-600' }}">
+                                            <span class="font-mono font-bold {{ $presensi->jam_masuk > ($presensi->jadwal->shift->jam_mulai ?? '08:00') ? 'text-red-600' : 'text-emerald-600' }}">
                                                 {{ $presensi->jam_masuk ? \Carbon\Carbon::parse($presensi->jam_masuk)->format('H:i') : '--:--' }}
                                             </span>
                                             <span class="text-xs text-slate-400 font-mono mt-0.5">s/d</span>

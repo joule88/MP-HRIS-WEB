@@ -2,11 +2,7 @@
 @section('title', 'Notifikasi')
 
 @section('content')
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-800">Notifikasi</h1>
-            <p class="text-sm text-slate-500 mt-1">Daftar semua notifikasi Anda</p>
-        </div>
+    <x-page-header title="Notifikasi" subtitle="Daftar semua notifikasi Anda">
         @if($unreadCount > 0)
             <form id="mark-all-read-form" onsubmit="return false;">
                 <x-button type="button" variant="secondary" onclick="markAllReadPage()">
@@ -15,7 +11,7 @@
                 </x-button>
             </form>
         @endif
-    </div>
+    </x-page-header>
 
     <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
         @forelse($notifikasi as $item)
@@ -62,11 +58,7 @@
         @endforelse
     </div>
 
-    @if($notifikasi->hasPages())
-        <div class="mt-6">
-            {{ $notifikasi->links() }}
-        </div>
-    @endif
+    <x-pagination :paginator="$notifikasi" />
 @endsection
 
 @section('script')

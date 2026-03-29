@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Generate Jadwal Kerja')
 
@@ -13,19 +13,75 @@
             <form action="{{ route('jadwal.store') }}" method="POST">
                 @csrf
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <x-date-input label="Tanggal Mulai" name="tanggal_mulai" :value="now()->format('Y-m-d')" required />
-                    <x-date-input label="Tanggal Selesai" name="tanggal_selesai" :value="now()->addDays(6)->format('Y-m-d')"
-                        required />
-                    <x-select label="Shift" name="id_shift" required>
-                        <option value="">-- Pilih Shift --</option>
-                        @foreach($shifts as $shift)
-                            <option value="{{ $shift->id_shift }}">{{ $shift->nama_shift }}
-                                ({{ \Carbon\Carbon::parse($shift->jam_mulai)->format('H:i') }} -
-                                {{ \Carbon\Carbon::parse($shift->jam_selesai)->format('H:i') }})
-                            </option>
-                        @endforeach
-                    </x-select>
+                <style>
+                    input[type="date"]::-webkit-calendar-picker-indicator,
+                    input[type="date"]::-webkit-inner-spin-button {
+                        display: none;
+                        -webkit-appearance: none;
+                    }
+                </style>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;" class="mb-6">
+                    <div class="space-y-1">
+                        <label class="text-sm font-semibold text-slate-700">Tanggal Mulai</label>
+                        <div class="relative">
+                            <input type="date" name="tanggal_mulai" value="{{ old('tanggal_mulai', now()->format('Y-m-d')) }}" required
+                                onclick="try{this.showPicker()}catch(e){}"
+                                onfocus="try{this.showPicker()}catch(e){}"
+                                class="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#130F26] focus:border-[#130F26] transition-all text-slate-600 cursor-pointer appearance-none"
+                                style="-webkit-appearance: none;">
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-500">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        @error('tanggal_mulai')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-sm font-semibold text-slate-700">Tanggal Selesai</label>
+                        <div class="relative">
+                            <input type="date" name="tanggal_selesai" value="{{ old('tanggal_selesai', now()->addDays(6)->format('Y-m-d')) }}" required
+                                onclick="try{this.showPicker()}catch(e){}"
+                                onfocus="try{this.showPicker()}catch(e){}"
+                                class="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#130F26] focus:border-[#130F26] transition-all text-slate-600 cursor-pointer appearance-none"
+                                style="-webkit-appearance: none;">
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-500">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        @error('tanggal_selesai')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-sm font-semibold text-slate-700">Shift</label>
+                        <div class="relative">
+                            <select name="id_shift" id="id_shift" required
+                                class="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#130F26] focus:border-[#130F26] transition-all text-slate-600 cursor-pointer appearance-none">
+                                <option value="">-- Pilih Shift --</option>
+                                @foreach($shifts as $shift)
+                                    <option value="{{ $shift->id_shift }}">{{ $shift->nama_shift }}
+                                        ({{ \Carbon\Carbon::parse($shift->jam_mulai)->format('H:i') }} -
+                                        {{ \Carbon\Carbon::parse($shift->jam_selesai)->format('H:i') }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-500">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        @error('id_shift')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
 
                 <div class="mb-6">

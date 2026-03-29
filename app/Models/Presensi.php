@@ -94,4 +94,15 @@ class Presensi extends Model
     {
         return $this->belongsTo(User::class, 'id_user');
     }
+
+    public function status()
+    {
+        return $this->belongsTo(StatusPengajuan::class, 'id_status', 'id_status');
+    }
+
+    public function jadwal()
+    {
+        return $this->hasOne(JadwalKerja::class, 'id_user', 'id_user')
+            ->whereColumn('jadwal_kerja.tanggal', 'presensi.tanggal');
+    }
 }

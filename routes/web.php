@@ -89,6 +89,7 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::resource('shift', \App\Http\Controllers\ShiftController::class)->except(['create', 'edit', 'show']);
     Route::resource('jadwal', \App\Http\Controllers\JadwalController::class)->except(['edit', 'show']);
     Route::resource('pegawai', PegawaiController::class);
+    Route::post('/pegawai/{id}/reset-password', [PegawaiController::class, 'resetPassword'])->name('pegawai.reset-password');
     Route::post('/hari-libur/sync', [\App\Http\Controllers\HariLiburController::class, 'syncHolidays'])->name('hari-libur.sync');
     Route::resource('hari-libur', \App\Http\Controllers\HariLiburController::class)->except(['create', 'edit', 'show']);
 

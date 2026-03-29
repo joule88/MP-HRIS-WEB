@@ -110,6 +110,10 @@ class LaporanIzinExport implements FromCollection, WithHeadings, WithMapping, Wi
                 $lastRow   = $this->data->count() + 3;
                 $dataRange = "A3:I{$lastRow}";
 
+                $sheet->getParent()->getDefaultStyle()->getFont()
+                    ->setName('Calibri')
+                    ->setSize(10);
+
                 // Merge judul
                 $sheet->mergeCells('A1:I1');
 

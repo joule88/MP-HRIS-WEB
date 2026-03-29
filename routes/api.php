@@ -37,6 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/presensi', [PresensiController::class, 'index']);
     Route::post('/presensi', [PresensiController::class, 'store']);
+    Route::post('/presensi/check-radius', [PresensiController::class, 'checkRadius']);
     Route::get('/presensi/history', [PresensiController::class, 'history']);
     Route::post('/presensi/{id}/resubmit', [PresensiController::class, 'resubmit']);
 
@@ -50,6 +51,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/lembur/history', [LemburController::class, 'history']);
 
     Route::get('/pengumuman', [\App\Http\Controllers\Api\PengumumanApiController::class, 'index']);
+    Route::get('/pengumuman/{id}', [\App\Http\Controllers\Api\PengumumanApiController::class, 'show']);
 
     Route::get('/user', [AuthController::class, 'user']);
 
@@ -69,5 +71,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/read-all', [\App\Http\Controllers\Api\NotifikasiApiController::class, 'markAllAsRead']);
     });
     Route::post('/device-token', [\App\Http\Controllers\Api\NotifikasiApiController::class, 'saveDeviceToken']);
+
+    Route::get('/kompensasi', function () {
+        return response()->json([
+            'success' => true,
+            'data' => \App\Models\JenisKompensasi::all(),
+        ]);
+    });
 
 });

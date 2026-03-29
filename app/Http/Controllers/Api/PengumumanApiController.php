@@ -22,6 +22,7 @@ class PengumumanApiController extends Controller
                         'description' => $item->isi,
                         'tanggal' => $item->tanggal?->format('Y-m-d'),
                         'jabatan' => $item->pembuat?->jabatan?->nama_jabatan ?? 'Admin',
+                        'nama_pembuat' => $item->pembuat?->nama_lengkap ?? 'Admin',
                         'avatar_url' => $item->pembuat?->foto,
                     ];
                 });
@@ -29,6 +30,25 @@ class PengumumanApiController extends Controller
             return ApiResponse::success($pengumuman, 'Pengumuman berhasil dimuat');
         } catch (\Exception $e) {
             return ApiResponse::error('Gagal memuat pengumuman: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function show($id)
+    {
+        try {
+            $item = Pengumuman::with('pembuat.jabatan')->findOrFail($id);
+
+            return ApiResponse::success([
+                'id' => $item->id_pengumuman,
+                'title' => $item->judul,
+                'description' => $item->isi,
+                'tanggal' => $item->tanggal?->format('Y-m-d'),
+                'jabatan' => $item->pembuat?->jabatan?->nama_jabatan ?? 'Admin',
+                'nama_pembuat' => $item->pembuat?->nama_lengkap ?? 'Admin',
+                'avatar_url' => $item->pembuat?->foto,
+            ], 'Detail pengumuman berhasil dimuat');
+        } catch (\Exception $e) {
+            return ApiResponse::error('Pengumuman tidak ditemukan', 404);
         }
     }
 }

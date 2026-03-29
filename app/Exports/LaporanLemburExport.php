@@ -150,6 +150,10 @@ class LaporanLemburExport implements FromCollection, WithHeadings, WithMapping, 
                 $lastRow   = count($this->pegawai) + 6;
                 $dataStart = 7;
 
+                $sheet->getParent()->getDefaultStyle()->getFont()
+                    ->setName('Calibri')
+                    ->setSize(10);
+
                 $sheet->mergeCells('A1:I1');
                 $sheet->mergeCells('A2:I2');
                 $sheet->mergeCells('A3:I3');
