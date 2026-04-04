@@ -12,18 +12,21 @@
     </div>
 
     @php
-        $roleNama    = strtolower(Auth::user()->roles->first()?->nama_role ?? '');
+        $authUser     = Auth::user();
+        $roleNama    = strtolower($authUser->roles->first()?->nama_role ?? '');
         $isHrd        = $roleNama === 'hrd';
         $isManager    = $roleNama === 'manager';
         $isSupervisor = $roleNama === 'supervisor';
         $isStaff      = $roleNama === 'staff';
+        $isGlobalAdmin = $authUser->isGlobalAdmin();
+        $userKantor   = $authUser->id_kantor;
 
         // Alias untuk kondisi gabungan
-        $canManage        = $isHrd;                              // hanya HRD
-        $canViewPegawai   = $isHrd || $isManager;               // HRD & Manager
+        $canManage        = $isHrd;
+        $canViewPegawai   = $isHrd || $isManager;
         $canViewPresensi  = $isHrd || $isManager || $isSupervisor;
         $canApproveIzin   = $isHrd || $isManager;
-        $canViewLaporan   = $isHrd || $isManager || $isSupervisor; // laporan kehadiran
+        $canViewLaporan   = $isHrd || $isManager || $isSupervisor;
         $canViewLaporanIzin = $isHrd || $isManager;
         $canViewJadwal    = $isHrd || $isManager || $isSupervisor;
         $canAccessWeb     = $isHrd || $isManager || $isSupervisor;
@@ -96,6 +99,17 @@
                         d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                 </svg>
                 <span class="font-semibold text-sm">Penjadwalan</span>
+            </a>
+
+            {{-- Tukar Shift – HRD, Manager, Supervisor --}}
+            <a href="{{ route('tukar-shift.index') }}"
+                class="flex items-center px-4 py-3 rounded-xl transition-all duration-200 group {{ request()->routeIs('tukar-shift.*') ? 'bg-[#130F26] text-white shadow-lg shadow-[#130F26]/30' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' }}">
+                <svg class="w-5 h-5 mr-3 {{ request()->routeIs('tukar-shift.*') ? 'text-white' : 'text-slate-400 group-hover:text-slate-600' }} group-hover:scale-110 transition-transform duration-300"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"></path>
+                </svg>
+                <span class="font-semibold text-sm">Tukar Shift</span>
             </a>
             @endif
 
@@ -177,7 +191,11 @@
                     </path>
                 </svg>
                 <span class="flex-1 font-semibold text-sm">Manajemen Izin</span>
-                @php $pendingIzin = \App\Models\PengajuanIzin::where('id_status', 1)->count(); @endphp
+                @php
+                    $izinQuery = \App\Models\PengajuanIzin::where('id_status', \App\Enums\StatusPengajuan::PENDING);
+                    if (!$isGlobalAdmin) { $izinQuery->whereHas('user', fn($q) => $q->where('id_kantor', $userKantor)); }
+                    $pendingIzin = $izinQuery->count();
+                @endphp
                 @if($pendingIzin > 0)
                     <span class="ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $pendingIzin }}</span>
                 @endif
@@ -193,7 +211,11 @@
                     </path>
                 </svg>
                 <span class="flex-1 font-semibold text-sm">Surat Izin</span>
-                @php $pendingSurat = \App\Models\SuratIzin::whereIn('status_surat', ['menunggu_manajer', 'menunggu_hrd'])->count(); @endphp
+                @php
+                    $suratQuery = \App\Models\SuratIzin::whereIn('status_surat', ['menunggu_manajer', 'menunggu_hrd']);
+                    if (!$isGlobalAdmin) { $suratQuery->whereHas('user', fn($q) => $q->where('id_kantor', $userKantor)); }
+                    $pendingSurat = $suratQuery->count();
+                @endphp
                 @if($pendingSurat > 0)
                     <span class="ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $pendingSurat }}</span>
                 @endif
@@ -211,7 +233,11 @@
                     </path>
                 </svg>
                 <span class="flex-1 font-semibold text-sm">Lembur & Poin</span>
-                @php $pendingLembur = \App\Models\Lembur::where('id_status', 1)->count(); @endphp
+                @php
+                    $lemburQuery = \App\Models\Lembur::where('id_status', \App\Enums\StatusPengajuan::PENDING);
+                    if (!$isGlobalAdmin) { $lemburQuery->whereHas('user', fn($q) => $q->where('id_kantor', $userKantor)); }
+                    $pendingLembur = $lemburQuery->count();
+                @endphp
                 @if($pendingLembur > 0)
                     <span class="ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $pendingLembur }}</span>
                 @endif
@@ -226,7 +252,11 @@
                     </path>
                 </svg>
                 <span class="flex-1 font-semibold text-sm">Persetujuan Poin</span>
-                @php $pendingPoin = \App\Models\PenggunaanPoin::where('id_status', 1)->count(); @endphp
+                @php
+                    $poinQuery = \App\Models\PenggunaanPoin::where('id_status', \App\Enums\StatusPengajuan::PENDING);
+                    if (!$isGlobalAdmin) { $poinQuery->whereHas('user', fn($q) => $q->where('id_kantor', $userKantor)); }
+                    $pendingPoin = $poinQuery->count();
+                @endphp
                 @if($pendingPoin > 0)
                     <span class="ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $pendingPoin }}</span>
                 @endif

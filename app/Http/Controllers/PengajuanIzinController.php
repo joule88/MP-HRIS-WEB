@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\JenisIzin as JenisIzinEnum;
+use App\Enums\StatusPengajuan;
+use App\Enums\StatusPresensi;
+use App\Enums\StatusSurat;
+use App\Enums\StatusValidasi;
 use App\Models\PengajuanIzin;
 use App\Models\Presensi;
-use App\Models\JenisIzin;
 use App\Models\User;
 use App\Models\SuratIzin;
 use App\Models\TandaTangan;
@@ -57,13 +61,13 @@ class PengajuanIzinController extends Controller
         $request->validate([
             'id_user' => 'required|exists:users,id',
             'id_jenis_izin' => 'required|exists:jenis_izin,id_jenis_izin',
-            'tanggal_mulai' => 'required|date',
+            'tanggal_mulai' => 'required|date|after_or_equal:today',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'alasan' => 'required|string',
-            'bukti_file' => 'required|image|mimes:jpeg,png,jpg,pdf|max:2048'
+            'bukti_file' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048'
         ]);
 
-        $jenisIzin = JenisIzin::find($request->id_jenis_izin);
+        $jenisIzin = \App\Models\JenisIzin::find($request->id_jenis_izin);
         if ($jenisIzin && $jenisIzin->nama_izin == 'Cuti') {
             $pegawai = User::find($request->id_user);
             $tanggalMulai = Carbon::parse($request->tanggal_mulai);
@@ -78,8 +82,29 @@ class PengajuanIzinController extends Controller
                 return back()->withInput()->with('error', "Sisa cuti pegawai tidak mencukupi. Sisa: {$pegawai->sisa_cuti} hari, diajukan: {$jumlahHari} hari.");
             }
 
-            if (Carbon::parse($request->tanggal_mulai, 'Asia/Jakarta')->diffInDays(Carbon::now('Asia/Jakarta')) < 7) {
+            $minDate = Carbon::now('Asia/Jakarta')->addDays(7)->startOfDay();
+            if (Carbon::parse($request->tanggal_mulai, 'Asia/Jakarta')->lt($minDate)) {
                 return back()->withInput()->with('error', 'Pengajuan Cuti minimal H-7!');
+            }
+        }
+
+        if ($jenisIzin && $jenisIzin->id_jenis_izin == \App\Enums\JenisIzin::SAKIT) {
+            $tanggalMulai = Carbon::parse($request->tanggal_mulai);
+            $jumlahHari = $tanggalMulai->diffInDays(Carbon::parse($request->tanggal_selesai)) + 1;
+
+            $sudahSakitBulanIni = PengajuanIzin::where('id_user', $request->id_user)
+                ->where('id_jenis_izin', \App\Enums\JenisIzin::SAKIT)
+                ->whereIn('id_status', [StatusPengajuan::PENDING, StatusPengajuan::DISETUJUI])
+                ->whereMonth('tanggal_mulai', $tanggalMulai->month)
+                ->whereYear('tanggal_mulai', $tanggalMulai->year)
+                ->exists();
+
+            if (($jumlahHari > 1 || $sudahSakitBulanIni) && !$request->hasFile('bukti_file')) {
+                return back()->withInput()->with('error',
+                    $jumlahHari > 1
+                        ? 'Izin sakit lebih dari 1 hari wajib melampirkan Surat Keterangan Dokter (SKD).'
+                        : 'Sudah pernah izin sakit di bulan ini. Wajib melampirkan Surat Keterangan Dokter (SKD).'
+                );
             }
         }
 
@@ -88,7 +113,7 @@ class PengajuanIzinController extends Controller
         $userId = $request->id_user;
 
         $overlappingIzin = PengajuanIzin::where('id_user', $userId)
-            ->whereIn('id_status', [1, 2])
+            ->whereIn('id_status', [StatusPengajuan::PENDING, StatusPengajuan::DISETUJUI])
             ->where(function ($q) use ($tglMulai, $tglSelesai) {
                 $q->whereBetween('tanggal_mulai', [$tglMulai, $tglSelesai])
                   ->orWhereBetween('tanggal_selesai', [$tglMulai, $tglSelesai])
@@ -126,10 +151,10 @@ class PengajuanIzinController extends Controller
                 'tanggal_selesai' => $request->tanggal_selesai,
                 'alasan' => $request->alasan,
                 'bukti_file' => $path,
-                'id_status' => 1
+                'id_status' => StatusPengajuan::PENDING
             ]);
 
-            if ($izin->id_jenis_izin == 2) {
+            if ($izin->id_jenis_izin == JenisIzinEnum::CUTI) {
                 $user = User::with(['jabatan', 'divisi'])->find($request->id_user);
                 $ttdAktif = TandaTangan::where('id_user', $user->id)->active()->first();
                 $tglMulai = Carbon::parse($request->tanggal_mulai)->translatedFormat('d F Y');
@@ -151,7 +176,7 @@ class PengajuanIzinController extends Controller
                     'id_user' => $user->id,
                     'id_ttd_pengaju' => $ttdAktif?->id_tanda_tangan,
                     'isi_surat' => $isiSurat,
-                    'status_surat' => 'menunggu_manajer',
+                    'status_surat' => StatusSurat::MENUNGGU_MANAJER,
                 ]);
             }
 
@@ -177,19 +202,19 @@ class PengajuanIzinController extends Controller
                 return redirect()->back()->with('error', 'Anda tidak diizinkan menyetujui pengajuan dari kantor lain.');
             }
 
-            if ($izin->id_status !== 1) {
+            if ($izin->id_status !== StatusPengajuan::PENDING) {
                 return redirect()->back()->with('error', 'Pengajuan ini sudah diproses sebelumnya.');
             }
 
-            if ($izin->id_jenis_izin == 2) {
+            if ($izin->id_jenis_izin == JenisIzinEnum::CUTI) {
                 return redirect()->back()->with('error', 'Pengajuan Cuti harus disetujui melalui menu Surat Izin (Manajer → HRD).');
             }
 
-            $izin->update(['id_status' => 2]);
+            $izin->update(['id_status' => StatusPengajuan::DISETUJUI]);
 
-            $statusPresensiId = 3;
-            if ($izin->id_jenis_izin == 1) {
-                $statusPresensiId = 4;
+            $statusPresensiId = StatusPresensi::IZIN;
+            if ($izin->id_jenis_izin == JenisIzinEnum::SAKIT) {
+                $statusPresensiId = StatusPresensi::SAKIT;
             }
 
             $startDate = Carbon::parse($izin->tanggal_mulai, 'Asia/Jakarta');
@@ -207,19 +232,12 @@ class PengajuanIzinController extends Controller
                         'id_status' => $statusPresensiId,
                         'jam_masuk' => null,
                         'jam_pulang' => null,
-                        'id_validasi' => 1,
+                        'id_validasi' => StatusValidasi::VALID,
                         'alasan_telat' => $izin->jenisIzin->nama_izin . ': ' . $izin->alasan
                     ]
                 );
 
                 $startDate->addDay();
-            }
-
-            if ($izin->id_jenis_izin == 2) {
-                $user = \App\Models\User::find($izin->id_user);
-                $jumlahHari = Carbon::parse($izin->tanggal_mulai)->diffInDays(Carbon::parse($izin->tanggal_selesai)) + 1;
-                $newSisa = max(0, ($user->sisa_cuti ?? 0) - $jumlahHari);
-                $user->update(['sisa_cuti' => $newSisa]);
             }
 
             DB::commit();
@@ -250,16 +268,16 @@ class PengajuanIzinController extends Controller
             return redirect()->back()->with('error', 'Anda tidak diizinkan menolak pengajuan dari kantor lain.');
         }
 
-        if ($izin->id_status !== 1) {
+        if ($izin->id_status !== StatusPengajuan::PENDING) {
             return redirect()->back()->with('error', 'Pengajuan ini sudah diproses sebelumnya.');
         }
 
-        if ($izin->id_jenis_izin == 2) {
+        if ($izin->id_jenis_izin == JenisIzinEnum::CUTI) {
             return redirect()->back()->with('error', 'Pengajuan Cuti harus ditolak melalui menu Surat Izin.');
         }
 
         $izin->update([
-            'id_status' => 3
+            'id_status' => StatusPengajuan::DITOLAK
         ]);
 
         app(NotifikasiService::class)->kirim(

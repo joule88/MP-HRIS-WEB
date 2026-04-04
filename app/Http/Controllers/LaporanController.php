@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\StatusPresensi;
 use App\Models\User;
 use App\Models\Presensi;
 use Illuminate\Http\Request;
@@ -124,12 +125,11 @@ class LaporanController extends Controller
 
     private function buildRekap(int $bulan, int $tahun, $divisiId = null): array
     {
-
-        $idTepatWaktu = 1;
-        $idTerlambat = 2;
-        $idIzin = 3;
-        $idSakit = 4;
-        $idAlpha = 5;
+        $idTepatWaktu = StatusPresensi::TEPAT_WAKTU;
+        $idTerlambat = StatusPresensi::TERLAMBAT;
+        $idIzin = StatusPresensi::IZIN;
+        $idSakit = StatusPresensi::SAKIT;
+        $idAlpha = StatusPresensi::ALPHA;
 
         $pegawaiQuery = User::with(['jabatan', 'divisi'])
             ->where('status_aktif', 1)

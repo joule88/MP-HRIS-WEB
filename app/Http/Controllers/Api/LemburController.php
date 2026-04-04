@@ -10,6 +10,7 @@ use App\Http\Requests\StoreLemburRequest;
 use App\Models\Lembur;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Enums\StatusPengajuan;
 
 class LemburController extends Controller
 {
@@ -80,7 +81,7 @@ class LemburController extends Controller
 
             $lembur = Lembur::where('id_user', Auth::id())
                 ->where('id_lembur', $id)
-                ->where('id_status', 1)
+                ->where('id_status', StatusPengajuan::PENDING)
                 ->first();
 
             if (!$lembur) {
@@ -106,9 +107,9 @@ class LemburController extends Controller
                 $statusParam = $request->get('status');
 
                 $statusId = match ($statusParam) {
-                    'pending' => 1,
-                    'approved' => 2,
-                    'rejected' => 3,
+                    'pending' => StatusPengajuan::PENDING,
+                    'approved' => StatusPengajuan::DISETUJUI,
+                    'rejected' => StatusPengajuan::DITOLAK,
                     default => null
                 };
 

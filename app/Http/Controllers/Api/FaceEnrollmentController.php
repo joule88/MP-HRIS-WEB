@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\FaceRecognitionService;
-use App\Helpers\ApiResponse;
 use Illuminate\Support\Facades\Log;
+use App\Enums\StatusVerifikasiWajah;
 
 class FaceEnrollmentController extends Controller
 {
@@ -19,38 +19,43 @@ class FaceEnrollmentController extends Controller
 
     public function enrollFace(Request $request)
     {
-
         $validator = \Validator::make($request->all(), [
-            'foto_depan' => 'required|image|mimes:jpeg,png,jpg|max:5120',
-            'foto_kanan' => 'required|image|mimes:jpeg,png,jpg|max:5120',
-            'foto_kiri' => 'required|image|mimes:jpeg,png,jpg|max:5120',
-            'foto_bawah' => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            'video_wajah' => 'required|file|mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/3gpp,video/x-matroska|max:51200',
+        ], [
+            'video_wajah.required' => 'File video wajah wajib diupload.',
+            'video_wajah.file' => 'Data yang dikirim bukan file yang valid.',
+            'video_wajah.mimetypes' => 'Format video tidak didukung. Gunakan MP4, MOV, atau AVI.',
+            'video_wajah.max' => 'Ukuran video terlalu besar (maksimal 50MB).',
         ]);
 
         if ($validator->fails()) {
+            Log::warning('Face Enrollment Validation Failed', [
+                'errors' => $validator->errors()->toArray(),
+                'has_file' => $request->hasFile('video_wajah'),
+                'file_size' => $request->hasFile('video_wajah')
+                    ? $request->file('video_wajah')->getSize()
+                    : null,
+                'file_mime' => $request->hasFile('video_wajah')
+                    ? $request->file('video_wajah')->getMimeType()
+                    : null,
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Validasi gagal',
+                'message' => $validator->errors()->first(),
                 'errors' => $validator->errors()
             ], 422);
         }
 
         try {
             $user = $request->user();
+            $video = $request->file('video_wajah');
 
-            $photos = [
-                'depan' => $request->file('foto_depan'),
-                'kanan' => $request->file('foto_kanan'),
-                'kiri' => $request->file('foto_kiri'),
-                'bawah' => $request->file('foto_bawah'),
-            ];
-
-            $result = $this->faceService->enrollFace($user->id, $photos);
+            $result = $this->faceService->enrollFace($user->id, $video);
 
             return response()->json([
                 'success' => true,
                 'message' => $result['message'],
-                'data' => null
             ], 200);
 
         } catch (\Exception $e) {
@@ -71,9 +76,9 @@ class FaceEnrollmentController extends Controller
         $status = 'not_registered';
         if ($user->is_face_registered) {
             $status = 'pending';
-            if ($dataWajah && $dataWajah->is_verified == 1) {
+            if ($dataWajah && $dataWajah->is_verified == StatusVerifikasiWajah::APPROVED) {
                 $status = 'verified';
-            } elseif ($dataWajah && $dataWajah->is_verified == 2) {
+            } elseif ($dataWajah && $dataWajah->is_verified == StatusVerifikasiWajah::REJECTED) {
                 $status = 'rejected';
             }
         }
@@ -91,13 +96,30 @@ class FaceEnrollmentController extends Controller
     {
         $request->validate([
             'foto' => 'required|image|max:5120',
+            'tipe' => 'nullable|string|in:presensi,test',
         ]);
 
         try {
-            $user = $request->user();
-            $file = $request->file('foto');
+            set_time_limit(0);
 
+            $user = $request->user();
+            $tipe = $request->input('tipe', 'presensi');
+
+            $file = $request->file('foto');
             $result = $this->faceService->verifyFace($user->id, $file);
+
+            \DB::table('log_verifikasi_wajah')->insert([
+                'id_user' => $user->id,
+                'confidence' => $result['confidence'] ?? null,
+                'svm_confidence' => $result['svm_confidence'] ?? null,
+                'normalized_distance' => $result['normalized_distance'] ?? null,
+                'verification_status' => $result['verification_status'] ?? null,
+                'is_match' => $result['verified'] ?? false,
+                'blur_score' => $result['blur_score'] ?? null,
+                'tipe' => $tipe,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -106,6 +128,18 @@ class FaceEnrollmentController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            if (isset($user)) {
+                \DB::table('log_verifikasi_wajah')->insert([
+                    'id_user' => $user->id,
+                    'confidence' => 0,
+                    'verification_status' => 'ERROR',
+                    'is_match' => false,
+                    'tipe' => $tipe ?? 'presensi',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
             return response()->json([
                 'success' => false,
                 'message' => 'Verifikasi Gagal: ' . $e->getMessage()

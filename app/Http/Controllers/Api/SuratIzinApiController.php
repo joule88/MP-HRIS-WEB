@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\StatusSurat;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSuratIzinRequest;
@@ -68,7 +69,7 @@ class SuratIzinApiController extends Controller
                 'id_user' => $user->id,
                 'isi_surat' => $request->isi_surat,
                 'id_ttd_pengaju' => $ttd->id_tanda_tangan,
-                'status_surat' => 'menunggu_manajer',
+                'status_surat' => StatusSurat::MENUNGGU_MANAJER,
             ]);
 
             DB::commit();

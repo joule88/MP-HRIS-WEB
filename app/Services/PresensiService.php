@@ -2,6 +2,11 @@
 
 namespace App\Services;
 
+use App\Enums\JenisPengurangan;
+use App\Enums\StatusPengajuan;
+use App\Enums\StatusPresensi;
+use App\Enums\StatusValidasi;
+use App\Enums\StatusVerifikasiWajah;
 use App\Models\Presensi;
 use App\Models\JadwalKerja;
 use Carbon\Carbon;
@@ -29,18 +34,18 @@ class PresensiService
 
         $penggunaanPoin = PenggunaanPoin::where('id_user', $userId)
             ->where('tanggal_penggunaan', $date)
-            ->where('id_status', 2)
+            ->where('id_status', StatusPengajuan::DISETUJUI)
             ->first();
 
         if ($penggunaanPoin) {
-            if ($penggunaanPoin->id_pengurangan == 4 && $penggunaanPoin->jam_masuk_custom) {
+            if ($penggunaanPoin->id_pengurangan == JenisPengurangan::MASUK_SIANG_POIN && $penggunaanPoin->jam_masuk_custom) {
                 $jamMasuk = $penggunaanPoin->jam_masuk_custom;
                 if (strlen($jamMasuk) == 5)
                     $jamMasuk .= ':00';
                 $status = 'Masuk Siang (Poin)';
             }
 
-            if ($penggunaanPoin->id_pengurangan == 5 && $penggunaanPoin->jam_pulang_custom) {
+            if ($penggunaanPoin->id_pengurangan == JenisPengurangan::PULANG_CEPAT_POIN && $penggunaanPoin->jam_pulang_custom) {
                 $jamPulang = $penggunaanPoin->jam_pulang_custom;
                 if (strlen($jamPulang) == 5)
                     $jamPulang .= ':00';
@@ -98,7 +103,7 @@ class PresensiService
             $statusJadwal = $dynamicSchedule['status_jadwal'];
         }
 
-        $toleransi = 10;
+        $toleransi = 15;
         $batasTerlambat = Carbon::parse($jamMasukEfektif, 'Asia/Jakarta')->addMinutes($toleransi);
 
         $isTerlambat = $jamSekarang->greaterThan($batasTerlambat);
@@ -113,21 +118,21 @@ class PresensiService
             $waktuMasukAwal = $jamSekarang->diff($jamJadwalMasuk)->format('%H:%I:%S');
         }
 
-        $idValidasi = 2;
+        $idValidasi = StatusValidasi::VALID;
         $statusKehadiran = 'Tepat Waktu';
         $alasanTelat = $request->alasan_telat ?? null;
 
         if ($isTerlambat) {
-            $idValidasi = 1;
+            $idValidasi = StatusValidasi::PENDING;
             $statusKehadiran = 'Terlambat';
         } else if ($waktuMasukAwal != null) {
-            $idValidasi = 2;
+            $idValidasi = StatusValidasi::VALID;
             $statusKehadiran = 'Datang Awal';
             if (str_contains($statusJadwal, 'Poin')) {
                 $statusKehadiran = 'Masuk Siang (Poin) - Datang Awal';
             }
         } else {
-            $idValidasi = 2;
+            $idValidasi = StatusValidasi::VALID;
 
             if (str_contains($statusJadwal, 'Poin')) {
                 $statusKehadiran = 'Masuk Siang (Poin)';
@@ -135,13 +140,13 @@ class PresensiService
         }
 
         if (!$isDalamRadius) {
-            $idValidasi = 1;
+            $idValidasi = StatusValidasi::PENDING;
         }
 
-        $idStatus = ($statusKehadiran === 'Terlambat') ? 2 : 1;
+        $idStatus = ($statusKehadiran === 'Terlambat') ? StatusPresensi::TERLAMBAT : StatusPresensi::TEPAT_WAKTU;
 
         $faceVerified = 0;
-        if ($user->dataWajah && $user->dataWajah->is_verified == 1) {
+        if ($user->dataWajah && $user->dataWajah->is_verified == StatusVerifikasiWajah::APPROVED) {
             $faceVerified = 1;
         }
 
@@ -176,7 +181,6 @@ class PresensiService
     public function absenPulang($user, $request)
     {
         $jamSekarang = Carbon::now('Asia/Jakarta');
-        $hariIni = Carbon::today('Asia/Jakarta')->toDateString();
 
         $presensi = Presensi::where('id_user', $user->id)
             ->whereNull('jam_pulang')
@@ -191,13 +195,32 @@ class PresensiService
             throw new \Exception('Anda sudah absen pulang hari ini.', 400);
         }
 
-        $dynamicSchedule = $this->getDynamicSchedule($user->id, $hariIni);
+        $tanggalPresensi = $presensi->tanggal;
+
+        $jadwalCek = JadwalKerja::with('shift')
+            ->where('id_user', $user->id)
+            ->where('tanggal', $tanggalPresensi)
+            ->first();
+
+        $isShiftMalam = false;
+        if ($jadwalCek && $jadwalCek->shift) {
+            $isShiftMalam = $jadwalCek->shift->jam_selesai < $jadwalCek->shift->jam_mulai;
+        }
+
+        $isHariIni = Carbon::parse($tanggalPresensi)->isToday();
+        if (!$isHariIni && !$isShiftMalam) {
+            throw new \Exception('Tidak bisa absen pulang untuk shift normal hari sebelumnya. Hubungi HRD untuk koreksi.', 400);
+        }
+
+        $jamMasukPresensi = Carbon::parse($presensi->jam_masuk, 'Asia/Jakarta');
+        if (!$isShiftMalam && $jamSekarang->lessThan($jamMasukPresensi)) {
+            throw new \Exception('Jam pulang tidak boleh lebih awal dari jam masuk (' . $presensi->jam_masuk . ').', 400);
+        }
+
+        $dynamicSchedule = $this->getDynamicSchedule($user->id, $tanggalPresensi);
 
         if (!$dynamicSchedule) {
-            $jadwalFallback = JadwalKerja::with('shift')
-                ->where('id_user', $user->id)
-                ->where('tanggal', $hariIni)
-                ->first();
+            $jadwalFallback = $jadwalCek;
 
             if (!$jadwalFallback) {
                 throw new \Exception('Jadwal kerja tidak ditemukan.', 404);

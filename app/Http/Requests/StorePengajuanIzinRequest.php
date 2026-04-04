@@ -20,7 +20,7 @@ class StorePengajuanIzinRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tanggal_mulai' => 'required|date',
+            'tanggal_mulai' => 'required|date|after_or_equal:today',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'id_jenis_izin' => 'required|exists:jenis_izin,id_jenis_izin',
             'alasan' => 'required|string|max:150',

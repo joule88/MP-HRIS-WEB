@@ -254,7 +254,12 @@
 
                     <div class="flex items-center gap-4 md:gap-6">
 
-                        {{-- Bell Notifikasi --}}
+                        {{-- Bell Notifikasi (HRD & Manager only, Supervisor tidak punya notifikasi) --}}
+                        @php
+                            $roleNotif = strtolower(Auth::user()->roles->first()?->nama_role ?? '');
+                            $canSeeNotif = in_array($roleNotif, ['hrd', 'manager']);
+                        @endphp
+                        @if($canSeeNotif)
                         <div class="relative" x-data="notifDropdown()" @click.away="open = false">
                             <button @click="toggle()" class="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all duration-200">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -302,6 +307,7 @@
                                 </a>
                             </div>
                         </div>
+                        @endif
 
                         <div class="text-right hidden md:block">
                             <p class="text-sm font-bold text-slate-800">{{ Auth::user()->nama_lengkap ?? 'Guest' }}</p>

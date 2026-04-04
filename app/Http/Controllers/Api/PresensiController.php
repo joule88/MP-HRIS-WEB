@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\JenisPengurangan;
+use App\Enums\StatusPengajuan;
+use App\Enums\StatusPresensi;
+use App\Enums\StatusValidasi;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\Presensi;
@@ -43,15 +47,15 @@ class PresensiController extends Controller
 
         $poinOverrides = PenggunaanPoin::where('id_user', $user->id)
             ->whereDate('tanggal_penggunaan', $today)
-            ->where('id_status', 2)
+            ->where('id_status', StatusPengajuan::DISETUJUI)
             ->get();
 
         foreach ($poinOverrides as $poin) {
-            if ($poin->id_pengurangan == 4 && $poin->jam_masuk_custom) {
+            if ($poin->id_pengurangan == JenisPengurangan::MASUK_SIANG_POIN && $poin->jam_masuk_custom) {
                 $jamMasuk = substr($poin->jam_masuk_custom, 0, 5) . ':00';
                 $infoJadwal .= ' (Masuk Siang)';
             }
-            if ($poin->id_pengurangan == 5 && $poin->jam_pulang_custom) {
+            if ($poin->id_pengurangan == JenisPengurangan::PULANG_CEPAT_POIN && $poin->jam_pulang_custom) {
                 $jamPulang = substr($poin->jam_pulang_custom, 0, 5) . ':00';
                 $infoJadwal .= ' (Pulang Cepat)';
             }
@@ -164,8 +168,8 @@ class PresensiController extends Controller
     {
         try {
             $request->validate([
-                'latitude' => 'required|numeric',
-                'longitude' => 'required|numeric',
+                'latitude' => 'required|numeric|between:-90,90',
+                'longitude' => 'required|numeric|between:-180,180',
                 'foto' => 'required|image|max:2048',
                 'status' => 'required|in:masuk,pulang',
                 'keterangan_luar_radius' => 'nullable|string|max:500',
@@ -213,7 +217,7 @@ class PresensiController extends Controller
 
                 $statusMasuk = '-';
                 if ($item->jam_masuk) {
-                    if ($item->id_status == 5) {
+                    if ($item->id_status == StatusPresensi::ALPHA) {
                         $statusMasuk = 'Alpha (Batal)';
                     } elseif ($item->waktu_terlambat) {
                         $statusMasuk = 'Terlambat';
@@ -225,11 +229,11 @@ class PresensiController extends Controller
                 } else {
                     if ($item->alasan_telat && str_contains($item->alasan_telat, 'Cuti')) {
                         $statusMasuk = 'Cuti';
-                    } elseif ($item->id_status == 3) {
+                    } elseif ($item->id_status == StatusPresensi::IZIN) {
                         $statusMasuk = 'Izin';
-                    } elseif ($item->id_status == 4) {
+                    } elseif ($item->id_status == StatusPresensi::SAKIT) {
                         $statusMasuk = 'Sakit';
-                    } elseif ($item->id_status != null && $item->id_status != 1 && $item->id_status != 2) {
+                    } elseif ($item->id_status != null && $item->id_status != StatusPresensi::TEPAT_WAKTU && $item->id_status != StatusPresensi::TERLAMBAT) {
 
                         $statusStatus = \DB::table('status_presensi')->where('id_status', $item->id_status)->value('nama_status');
                         if ($statusStatus) {
@@ -259,7 +263,7 @@ class PresensiController extends Controller
                     } catch (\Exception $e) {
                         $totalJam = '-';
                     }
-                } elseif ($item->jam_masuk && !$item->jam_pulang && $item->id_status == 5) {
+                } elseif ($item->jam_masuk && !$item->jam_pulang && $item->id_status == StatusPresensi::ALPHA) {
                     $totalJam = '0j 0m (Batal)';
                 }
 
@@ -309,12 +313,12 @@ class PresensiController extends Controller
                 ->where('id_user', Auth::id())
                 ->firstOrFail();
 
-            if ($presensi->id_validasi != 3) {
+            if ($presensi->id_validasi != StatusValidasi::DITOLAK) {
                 return ApiResponse::error('Hanya presensi yang ditolak yang bisa diajukan ulang.', 422);
             }
 
             $presensi->update([
-                'id_validasi' => 2,
+                'id_validasi' => StatusValidasi::PENDING,
                 'alasan_penolakan' => null,
                 'keterangan_luar_radius' => $request->keterangan,
             ]);

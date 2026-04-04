@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\JenisKompensasi as JenisKompensasiEnum;
+use App\Enums\StatusPengajuan as StatusPengajuanEnum;
 use App\Models\Lembur;
 use App\Models\PoinLembur;
-use App\Models\JenisKompensasi;
-use App\Models\StatusPengajuan;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -17,7 +17,6 @@ class LemburService
             $start = Carbon::parse($data['jam_mulai']);
             $end   = Carbon::parse($data['jam_selesai']);
 
-            // Handle shift malam yang melewati tengah malam (jam selesai < jam mulai)
             if ($end->lessThanOrEqualTo($start)) {
                 $end->addDay();
             }
@@ -34,7 +33,7 @@ class LemburService
             'jam_selesai' => $data['jam_selesai'],
             'durasi_menit' => $diff,
             'keterangan' => $data['keterangan'] ?? null,
-            'id_status' => 1,
+            'id_status' => StatusPengajuanEnum::PENDING,
             'id_kompensasi' => $data['id_kompensasi'] ?? null,
             'tanggal_diajukan' => Carbon::now(),
             'jumlah_poin' => 0,
@@ -43,12 +42,16 @@ class LemburService
 
     public function approve(Lembur $lembur)
     {
+        if ($lembur->id_status != StatusPengajuanEnum::PENDING) {
+            throw new \Exception('Lembur ini sudah diproses sebelumnya.');
+        }
+
         return DB::transaction(function () use ($lembur) {
             $lembur->update([
-                'id_status' => StatusPengajuan::where('nama_status', 'Approved')->first()->id_status ?? 2
+                'id_status' => StatusPengajuanEnum::DISETUJUI
             ]);
 
-            if ($lembur->id_kompensasi == JenisKompensasi::POIN) {
+            if ($lembur->id_kompensasi == JenisKompensasiEnum::TAMBAHAN_POIN) {
                 $this->generatePoin($lembur);
             }
 
@@ -58,15 +61,19 @@ class LemburService
 
     public function reject(Lembur $lembur, string $alasan)
     {
+        if ($lembur->id_status != StatusPengajuanEnum::PENDING) {
+            throw new \Exception('Lembur ini sudah diproses sebelumnya.');
+        }
+
         return $lembur->update([
-            'id_status' => StatusPengajuan::where('nama_status', 'Rejected')->first()->id_status ?? 3,
+            'id_status' => StatusPengajuanEnum::DITOLAK,
             'alasan_penolakan' => $alasan
         ]);
     }
 
     private function generatePoin(Lembur $lembur)
     {
-        $poinDapat = floor(($lembur->durasi_menit + 15) / 30);
+        $poinDapat = floor($lembur->durasi_menit / 30);
 
         if ($poinDapat > 0) {
             PoinLembur::create([

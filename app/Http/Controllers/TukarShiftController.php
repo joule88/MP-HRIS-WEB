@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\StatusPengajuan;
 use App\Models\User;
 use App\Models\JadwalKerja;
 use App\Models\RiwayatTukarShift;
@@ -48,13 +49,25 @@ class TukarShiftController extends Controller
                 return redirect()->back()->withInput()->with('error', 'Data jadwal tidak sesuai dengan pegawai yang dipilih.');
             }
 
+            // 1b. Validasi kantor harus sama
+            $user1 = User::find($request->id_user_1);
+            $user2 = User::find($request->id_user_2);
+            if ($user1->id_kantor != $user2->id_kantor) {
+                return redirect()->back()->withInput()->with('error', 'Kedua pegawai harus berada di kantor yang sama untuk tukar shift.');
+            }
+
+            // 1c. Validasi shift tidak boleh sama pada tanggal sama (percuma)
+            if ($jadwal1->id_shift == $jadwal2->id_shift && $jadwal1->tanggal == $jadwal2->tanggal) {
+                return redirect()->back()->withInput()->with('error', 'Kedua jadwal memiliki shift yang sama pada tanggal yang sama. Tidak perlu ditukar.');
+            }
+
             // 2. Validasi tanggal tidak boleh di masa lalu
             $hariIni = Carbon::today()->toDateString();
             if ($jadwal1->tanggal < $hariIni || $jadwal2->tanggal < $hariIni) {
                 return redirect()->back()->withInput()->with('error', 'Tidak bisa menukar shift untuk tanggal yang sudah lewat.');
             }
 
-            // 3. Validasi presensi belum ada di tanggal tujuan
+            // 3. Validasi presensi belum ada di tanggal ASAL
             $presensi1 = \App\Models\Presensi::where('id_user', $request->id_user_1)
                 ->where('tanggal', $jadwal1->tanggal)
                 ->exists();
@@ -67,6 +80,21 @@ class TukarShiftController extends Controller
                 ->exists();
             if ($presensi2) {
                 return redirect()->back()->withInput()->with('error', 'Pegawai Kedua sudah memiliki data presensi pada tanggal (' . $jadwal2->tanggal . '). Tukar shift tidak dapat dilakukan.');
+            }
+
+            // 3b. Validasi presensi di tanggal TUJUAN (setelah swap)
+            $presensiTujuan1 = \App\Models\Presensi::where('id_user', $request->id_user_1)
+                ->where('tanggal', $jadwal2->tanggal)
+                ->exists();
+            if ($presensiTujuan1) {
+                return redirect()->back()->withInput()->with('error', 'Pegawai Pertama sudah punya presensi di tanggal tujuan (' . $jadwal2->tanggal . '). Tukar shift tidak dapat dilakukan.');
+            }
+
+            $presensiTujuan2 = \App\Models\Presensi::where('id_user', $request->id_user_2)
+                ->where('tanggal', $jadwal1->tanggal)
+                ->exists();
+            if ($presensiTujuan2) {
+                return redirect()->back()->withInput()->with('error', 'Pegawai Kedua sudah punya presensi di tanggal tujuan (' . $jadwal1->tanggal . '). Tukar shift tidak dapat dilakukan.');
             }
 
             // 4. Validasi bentrok jadwal kerja
@@ -89,7 +117,7 @@ class TukarShiftController extends Controller
             // 5. Validasi bentrok dengan Penggunaan Poin (Cuti / dll)
             $poin1 = \App\Models\PenggunaanPoin::where('id_user', $request->id_user_1)
                 ->where('tanggal_penggunaan', $jadwal2->tanggal)
-                ->where('id_status', 2)
+                ->where('id_status', StatusPengajuan::DISETUJUI)
                 ->exists();
             if ($poin1) {
                 return redirect()->back()->withInput()->with('error', 'Pegawai Pertama memiliki riwayat Cuti/Penggunaan Poin pada tanggal tujuan (' . $jadwal2->tanggal . ').');
@@ -97,7 +125,7 @@ class TukarShiftController extends Controller
 
             $poin2 = \App\Models\PenggunaanPoin::where('id_user', $request->id_user_2)
                 ->where('tanggal_penggunaan', $jadwal1->tanggal)
-                ->where('id_status', 2)
+                ->where('id_status', StatusPengajuan::DISETUJUI)
                 ->exists();
             if ($poin2) {
                 return redirect()->back()->withInput()->with('error', 'Pegawai Kedua memiliki riwayat Cuti/Penggunaan Poin pada tanggal tujuan (' . $jadwal1->tanggal . ').');

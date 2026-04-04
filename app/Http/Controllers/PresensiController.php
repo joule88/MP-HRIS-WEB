@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\StatusPengajuan;
+use App\Enums\StatusPresensi;
+use App\Enums\StatusValidasi;
 use App\Models\Presensi;
 use App\Models\JadwalKerja;
 use App\Models\Kantor;
@@ -24,7 +27,7 @@ class PresensiController extends Controller
         $tanggal = $request->get('tanggal', Carbon::today()->format('Y-m-d'));
         $divisiId = $request->get('divisi_id');
 
-        $pendingQuery = Presensi::where('id_validasi', 2);
+        $pendingQuery = Presensi::where('id_validasi', StatusValidasi::PENDING);
         if (!$isGlobalAdmin) {
             $pendingQuery->whereHas('user', function ($q) use ($user) {
                 $q->where('id_kantor', $user->id_kantor);
@@ -53,11 +56,11 @@ class PresensiController extends Controller
 
         $filterStatus = $request->get('filter_status');
         if ($filterStatus == 'tepat_waktu') {
-            $query->where('id_status', 1);
+            $query->where('id_status', StatusPresensi::TEPAT_WAKTU);
         } elseif ($filterStatus == 'terlambat') {
-            $query->where('id_status', 2);
+            $query->where('id_status', StatusPresensi::TERLAMBAT);
         } elseif ($filterStatus == 'pending') {
-            $query->where('id_validasi', 2);
+            $query->where('id_validasi', StatusValidasi::PENDING);
         }
 
         $presensi = $query->orderBy('jam_masuk', 'desc')->paginate(15);
@@ -74,7 +77,7 @@ class PresensiController extends Controller
         $poinCollection = \App\Models\PenggunaanPoin::with('jenisPengurangan')
             ->whereIn('id_user', $userIds)
             ->where('tanggal_penggunaan', $tanggal)
-            ->where('id_status', 2)
+            ->where('id_status', StatusPengajuan::DISETUJUI)
             ->get()
             ->keyBy('id_user');
 
@@ -112,16 +115,16 @@ class PresensiController extends Controller
             $item->status_keterlambatan = 'Tepat Waktu';
             $item->badge_color = 'success';
 
-            if ($item->id_status == 2) {
+            if ($item->id_status == StatusPresensi::TERLAMBAT) {
                 $item->status_keterlambatan = $item->alasan_telat ?? 'Terlambat';
                 $item->badge_color = 'rose';
-            } elseif ($item->id_status == 1) {
+            } elseif ($item->id_status == StatusPresensi::TEPAT_WAKTU) {
                 $item->status_keterlambatan = 'Tepat Waktu';
                 $item->badge_color = 'emerald';
             }
 
-            $item->validasi_label = $item->id_validasi == 1 ? 'Disetujui' : ($item->id_validasi == 3 ? 'Ditolak' : 'Pending');
-            $item->validasi_color = $item->id_validasi == 1 ? 'emerald' : ($item->id_validasi == 3 ? 'rose' : 'amber');
+            $item->validasi_label = $item->id_validasi == StatusValidasi::VALID ? 'Disetujui' : ($item->id_validasi == StatusValidasi::DITOLAK ? 'Ditolak' : 'Pending');
+            $item->validasi_color = $item->id_validasi == StatusValidasi::VALID ? 'emerald' : ($item->id_validasi == StatusValidasi::DITOLAK ? 'rose' : 'amber');
 
             $item->jarak_masuk = null;
             if ($item->user && $item->user->kantor && $item->lat_masuk && $item->lon_masuk) {
@@ -154,7 +157,7 @@ class PresensiController extends Controller
             return redirect()->back()->with('error', 'Anda tidak diizinkan menyetujui presensi dari kantor lain.');
         }
 
-        $presensi->update(['id_validasi' => 1]);
+        $presensi->update(['id_validasi' => StatusValidasi::VALID]);
 
         app(NotifikasiService::class)->kirim(
             $presensi->id_user,
@@ -176,7 +179,7 @@ class PresensiController extends Controller
             return redirect()->back()->with('error', 'Anda tidak diizinkan menolak presensi dari kantor lain.');
         }
 
-        $presensi->update(['id_validasi' => 3]);
+        $presensi->update(['id_validasi' => StatusValidasi::DITOLAK]);
 
         app(NotifikasiService::class)->kirim(
             $presensi->id_user,
@@ -209,10 +212,10 @@ class PresensiController extends Controller
             }
         }
 
-        $statusValidasi = $request->action == 'approve' ? 1 : 3;
+        $statusValidasi = $request->action == 'approve' ? StatusValidasi::VALID : StatusValidasi::DITOLAK;
 
         Presensi::whereIn('id_presensi', $request->presensi_ids)
-            ->where('id_validasi', 2)
+            ->where('id_validasi', StatusValidasi::PENDING)
             ->update(['id_validasi' => $statusValidasi]);
 
         $statusText = $request->action == 'approve' ? 'disetujui' : 'ditolak';
@@ -257,10 +260,10 @@ class PresensiController extends Controller
             'id_user' => $request->id_user,
             'tanggal' => $request->tanggal,
             'id_status' => $request->id_status,
-            'jam_masuk' => in_array($request->id_status, [1, 2]) ? $jamMasuk : null,
-            'jam_pulang' => in_array($request->id_status, [1, 2]) ? $jamPulang : null,
+            'jam_masuk' => in_array($request->id_status, [StatusPresensi::TEPAT_WAKTU, StatusPresensi::TERLAMBAT]) ? $jamMasuk : null,
+            'jam_pulang' => in_array($request->id_status, [StatusPresensi::TEPAT_WAKTU, StatusPresensi::TERLAMBAT]) ? $jamPulang : null,
             'alasan_telat' => $request->alasan_telat ?? 'Input Manual oleh Admin',
-            'id_validasi' => 1,
+            'id_validasi' => StatusValidasi::VALID,
             'verifikasi_wajah' => 1,
             'lat_masuk' => null,
             'lon_masuk' => null,
@@ -301,7 +304,7 @@ class PresensiController extends Controller
         $request->validate([
             'id_status' => 'required|exists:status_presensi,id_status',
             'jam_masuk' => [
-                \Illuminate\Validation\Rule::requiredIf(fn () => in_array($request->id_status, [1, 2])),
+                \Illuminate\Validation\Rule::requiredIf(fn () => in_array($request->id_status, [StatusPresensi::TEPAT_WAKTU, StatusPresensi::TERLAMBAT])),
                 'nullable',
                 'date_format:H:i'
             ],
@@ -320,22 +323,22 @@ class PresensiController extends Controller
         $isAdjusted = false;
         $adjustmentNotes = [];
 
-        if ($presensi->jam_masuk != $jamMasuk && in_array($request->id_status, [1, 2])) {
+        if ($presensi->jam_masuk != $jamMasuk && in_array($request->id_status, [StatusPresensi::TEPAT_WAKTU, StatusPresensi::TERLAMBAT])) {
             $isAdjusted = true;
             $adjustmentNotes[] = "Datang dari " . substr($presensi->jam_masuk ?? '-', 0, 5) . " ke " . substr($jamMasuk, 0, 5);
         }
 
-        if ($presensi->jam_pulang != $jamPulang && in_array($request->id_status, [1, 2])) {
+        if ($presensi->jam_pulang != $jamPulang && in_array($request->id_status, [StatusPresensi::TEPAT_WAKTU, StatusPresensi::TERLAMBAT])) {
             $isAdjusted = true;
             $adjustmentNotes[] = "Pulang dari " . substr($presensi->jam_pulang ?? '-', 0, 5) . " ke " . substr($jamPulang, 0, 5);
         }
 
         $presensi->update([
             'id_status' => $request->id_status,
-            'jam_masuk' => in_array($request->id_status, [1, 2]) ? $jamMasuk : null,
-            'jam_pulang' => in_array($request->id_status, [1, 2]) ? $jamPulang : null,
+            'jam_masuk' => in_array($request->id_status, [StatusPresensi::TEPAT_WAKTU, StatusPresensi::TERLAMBAT]) ? $jamMasuk : null,
+            'jam_pulang' => in_array($request->id_status, [StatusPresensi::TEPAT_WAKTU, StatusPresensi::TERLAMBAT]) ? $jamPulang : null,
             'alasan_telat' => $request->alasan_telat . ($isAdjusted ? " | [Koreksi Admin: " . implode(', ', $adjustmentNotes) . "]" : ""),
-            'id_validasi' => 1,
+            'id_validasi' => StatusValidasi::VALID,
         ]);
 
         return redirect()->route('presensi.index', ['tanggal' => $presensi->tanggal])
@@ -392,7 +395,7 @@ class PresensiController extends Controller
         );
 
         $radiusKantor = $kantor->radius;
-        $idValidasi = ($jarak <= $radiusKantor) ? 1 : 2;
+        $idValidasi = ($jarak <= $radiusKantor) ? StatusValidasi::VALID : StatusValidasi::PENDING;
 
         $presensiService = new \App\Services\PresensiService();
         $dynamicSchedule = $presensiService->getDynamicSchedule($user->id, $hariIni);
@@ -406,18 +409,17 @@ class PresensiController extends Controller
         $toleransi = 15;
         $batasToleransi = $jamMasukParsed->copy()->addMinutes($toleransi);
 
-        $idStatus = 1;
+        $idStatus = StatusPresensi::TEPAT_WAKTU;
         $alasanTelat = null;
 
         if ($jamSekarang->greaterThan($batasToleransi)) {
-            $idStatus = 2;
+            $idStatus = StatusPresensi::TERLAMBAT;
             $selisihMenit = $jamSekarang->diffInMinutes($jamMasukParsed);
             $alasanTelat = "Terlambat {$selisihMenit} menit";
         }
 
         $fotoFile = $request->file('foto');
         $imageName = 'masuk_' . $user->id . '_' . time() . '.' . $fotoFile->getClientOriginalExtension();
-        $fotoFile->storeAs('uploads/absensi', $imageName, 'public');
 
         $verifikasiWajah = 0;
         $faceMessage = null;
@@ -426,13 +428,15 @@ class PresensiController extends Controller
             $faceService = new \App\Services\FaceRecognitionService();
             $result = $faceService->verifyFace($user->id, $fotoFile);
 
-            if (isset($result['match']) && $result['match'] === true) {
+            if (isset($result['verified']) && $result['verified'] === true) {
                 $verifikasiWajah = 1;
             }
 
             $faceMessage = $result['message'] ?? null;
         } catch (\Exception $e) {
         }
+
+        $fotoFile->storeAs('uploads/absensi', $imageName, 'public');
 
         $presensi = Presensi::create([
             'id_user' => $user->id,
@@ -454,9 +458,9 @@ class PresensiController extends Controller
             'message' => 'Absen masuk berhasil!',
             'data' => [
                 'jam_masuk' => $jamSekarang->format('H:i'),
-                'status' => ($idStatus == 1) ? 'Tepat Waktu' : 'Terlambat',
+                'status' => ($idStatus == StatusPresensi::TEPAT_WAKTU) ? 'Tepat Waktu' : 'Terlambat',
                 'jarak' => round($jarak, 2) . ' meter',
-                'validasi_lokasi' => ($idValidasi == 1) ? 'Dalam Radius' : 'Di Luar Radius (Pending)',
+                'validasi_lokasi' => ($idValidasi == StatusValidasi::VALID) ? 'Dalam Radius' : 'Di Luar Radius (Pending)',
                 'verifikasi_wajah' => $verifikasiWajah == 1 ? 'Terverifikasi' : 'Pending',
                 'face_message' => $faceMessage,
             ]
@@ -479,17 +483,18 @@ class PresensiController extends Controller
 
         $fotoFile = $request->file('foto');
         $imageName = 'pulang_' . $user->id . '_' . time() . '.' . $fotoFile->getClientOriginalExtension();
-        $fotoFile->storeAs('uploads/absensi', $imageName, 'public');
 
         $verifikasiPulang = 0;
         try {
             $faceService = new \App\Services\FaceRecognitionService();
             $result = $faceService->verifyFace($user->id, $fotoFile);
-            if (isset($result['match']) && $result['match'] === true) {
+            if (isset($result['verified']) && $result['verified'] === true) {
                 $verifikasiPulang = 1;
             }
         } catch (\Exception $e) {
         }
+
+        $fotoFile->storeAs('uploads/absensi', $imageName, 'public');
 
         $presensiService = new \App\Services\PresensiService();
         $dynamicSchedule = $presensiService->getDynamicSchedule($user->id, $hariIni);

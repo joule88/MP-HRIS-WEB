@@ -17,6 +17,8 @@ class UpdatePengumumanRequest extends FormRequest
             'judul' => 'required|string|max:80',
             'isi' => 'required|string|max:500',
             'tanggal' => 'required|date',
+            'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'lampiran' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx|max:5120',
         ];
     }
 

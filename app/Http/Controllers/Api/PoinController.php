@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\StatusPengajuan;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\Poin;
@@ -108,7 +109,7 @@ class PoinController extends Controller
                 'id_pengurangan' => $request->id_pengurangan,
                 'jam_masuk_custom' => $request->jam_masuk_custom,
                 'jam_pulang_custom' => $request->jam_pulang_custom,
-                'id_status' => 1,
+                'id_status' => StatusPengajuan::PENDING,
                 'tanggal_diajukan' => now(),
             ]);
 

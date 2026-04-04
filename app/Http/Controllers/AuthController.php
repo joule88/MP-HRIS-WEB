@@ -36,6 +36,18 @@ class AuthController extends Controller
                 return back()->with('error', 'Akun Anda telah dinonaktifkan.');
             }
 
+            $hasWebRole = $user->roles()->whereIn('nama_role', ['hrd', 'manager', 'supervisor'])->exists();
+            if (!$hasWebRole) {
+                Auth::logout();
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Akun Anda tidak memiliki akses ke Web. Silakan gunakan aplikasi Mobile.'
+                    ], 403);
+                }
+                return back()->with('error', 'Akun Anda tidak memiliki akses ke Web. Silakan gunakan aplikasi Mobile.');
+            }
+
             $request->session()->regenerate();
 
             if ($request->ajax() || $request->wantsJson()) {

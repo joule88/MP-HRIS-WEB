@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\JenisKompensasi as JenisKompensasiEnum;
+use App\Enums\StatusPengajuan;
 use App\Models\Lembur;
 use App\Models\User;
 use App\Models\JenisKompensasi;
@@ -21,8 +23,18 @@ class LemburController extends Controller
 
     public function index()
     {
-        $lembur = Lembur::with(['user', 'status', 'kompensasi'])
-            ->orderByRaw("CASE WHEN id_status = 1 THEN 0 ELSE 1 END")
+        $user = \Illuminate\Support\Facades\Auth::user();
+        $isGlobalAdmin = $user->isGlobalAdmin();
+
+        $query = Lembur::with(['user', 'status', 'kompensasi']);
+
+        if (!$isGlobalAdmin) {
+            $query->whereHas('user', function ($q) use ($user) {
+                $q->where('id_kantor', $user->id_kantor);
+            });
+        }
+
+        $lembur = $query->orderByRaw("CASE WHEN id_status = " . StatusPengajuan::PENDING . " THEN 0 ELSE 1 END")
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
@@ -67,12 +79,18 @@ class LemburController extends Controller
             'alasan_penolakan' => 'required_if:action,reject|nullable|string'
         ]);
 
+        $lembur->load('user');
+        $userAuth = \Illuminate\Support\Facades\Auth::user();
+        if (!$userAuth->isGlobalAdmin() && $lembur->user->id_kantor != $userAuth->id_kantor) {
+            return redirect()->back()->with('error', 'Anda tidak diizinkan memproses data dari kantor lain.');
+        }
+
         try {
             if ($request->action == 'approve') {
                 $this->lemburService->approve($lembur);
                 $message = 'Pengajuan lembur berhasil disetujui.';
 
-                if ($lembur->id_kompensasi == 2) {
+                if ($lembur->id_kompensasi == JenisKompensasiEnum::TAMBAHAN_POIN) {
                     $message .= ' Poin telah ditambahkan ke karyawan.';
                 }
 

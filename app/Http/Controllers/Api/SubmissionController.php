@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\JenisIzin as JenisIzinEnum;
+use App\Enums\StatusPengajuan;
+use App\Enums\StatusSurat;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\PengajuanIzin;
@@ -29,7 +32,7 @@ class SubmissionController extends Controller
             $user = Auth::user();
 
             $jenisIzin = JenisIzin::find($request->id_jenis_izin);
-            if ($jenisIzin && $jenisIzin->nama_izin == 'Cuti') {
+            if ($jenisIzin && $jenisIzin->id_jenis_izin == JenisIzinEnum::CUTI) {
                 $tanggalMulai = Carbon::parse($request->tanggal_mulai);
                 $tanggalSelesai = Carbon::parse($request->tanggal_selesai);
                 $jumlahHari = $tanggalMulai->diffInDays($tanggalSelesai) + 1;
@@ -52,12 +55,34 @@ class SubmissionController extends Controller
                 }
             }
 
+            if ($jenisIzin && $jenisIzin->id_jenis_izin == JenisIzinEnum::SAKIT) {
+                $tanggalMulai = Carbon::parse($request->tanggal_mulai);
+                $tanggalSelesai = Carbon::parse($request->tanggal_selesai);
+                $jumlahHari = $tanggalMulai->diffInDays($tanggalSelesai) + 1;
+
+                $sudahSakitBulanIni = PengajuanIzin::where('id_user', $user->id)
+                    ->where('id_jenis_izin', JenisIzinEnum::SAKIT)
+                    ->whereIn('id_status', [StatusPengajuan::PENDING, StatusPengajuan::DISETUJUI])
+                    ->whereMonth('tanggal_mulai', $tanggalMulai->month)
+                    ->whereYear('tanggal_mulai', $tanggalMulai->year)
+                    ->exists();
+
+                if (($jumlahHari > 1 || $sudahSakitBulanIni) && !$request->hasFile('bukti_file')) {
+                    return ApiResponse::error(
+                        $jumlahHari > 1
+                            ? 'Izin sakit lebih dari 1 hari wajib melampirkan Surat Keterangan Dokter (SKD).'
+                            : 'Anda sudah pernah izin sakit di bulan ini. Wajib melampirkan Surat Keterangan Dokter (SKD).',
+                        422
+                    );
+                }
+            }
+
             $tglMulai = $request->tanggal_mulai;
             $tglSelesai = $request->tanggal_selesai;
             $userId = $user->id;
 
             $overlappingIzin = PengajuanIzin::where('id_user', $userId)
-                ->whereIn('id_status', [1, 2])
+                ->whereIn('id_status', [StatusPengajuan::PENDING, StatusPengajuan::DISETUJUI])
                 ->where(function ($q) use ($tglMulai, $tglSelesai) {
                     $q->whereBetween('tanggal_mulai', [$tglMulai, $tglSelesai])
                       ->orWhereBetween('tanggal_selesai', [$tglMulai, $tglSelesai])
@@ -94,7 +119,7 @@ class SubmissionController extends Controller
                 'tanggal_selesai' => $request->tanggal_selesai,
                 'alasan' => $request->alasan,
                 'bukti_file' => $path,
-                'id_status' => 1
+                'id_status' => StatusPengajuan::PENDING
             ]);
 
             $ttdAktif = TandaTangan::where('id_user', $user->id)->active()->first();
@@ -115,13 +140,13 @@ class SubmissionController extends Controller
                 . "Atas perhatian dan persetujuannya, saya ucapkan terima kasih.";
 
             $suratIzin = null;
-            if ($jenisIzin && $jenisIzin->nama_izin == 'Cuti') {
+            if ($jenisIzin && $jenisIzin->id_jenis_izin == JenisIzinEnum::CUTI) {
                 $suratIzin = SuratIzin::create([
                     'id_izin' => $submission->getKey(),
                     'id_user' => $user->id,
                     'id_ttd_pengaju' => $ttdAktif?->id_tanda_tangan,
                     'isi_surat' => $isiSurat,
-                    'status_surat' => 'menunggu_manajer',
+                    'status_surat' => StatusSurat::MENUNGGU_MANAJER,
                 ]);
             }
 
@@ -201,7 +226,7 @@ class SubmissionController extends Controller
         try {
             $submission = PengajuanIzin::where('id_user', Auth::id())
                 ->where('id_izin', $id)
-                ->where('id_status', 1)
+                ->where('id_status', StatusPengajuan::PENDING)
                 ->first();
 
             if (!$submission) {
@@ -214,7 +239,7 @@ class SubmissionController extends Controller
 
             $overlappingIzin = PengajuanIzin::where('id_user', $userId)
                 ->where('id_izin', '!=', $id)
-                ->whereIn('id_status', [1, 2])
+                ->whereIn('id_status', [StatusPengajuan::PENDING, StatusPengajuan::DISETUJUI])
                 ->where(function ($q) use ($tglMulai, $tglSelesai) {
                     $q->whereBetween('tanggal_mulai', [$tglMulai, $tglSelesai])
                       ->orWhereBetween('tanggal_selesai', [$tglMulai, $tglSelesai])
@@ -271,9 +296,9 @@ class SubmissionController extends Controller
                 $statusParam = $request->get('status');
 
                 $statusId = match ($statusParam) {
-                    'pending' => 1,
-                    'approved' => 2,
-                    'rejected' => 3,
+                    'pending' => StatusPengajuan::PENDING,
+                    'approved' => StatusPengajuan::DISETUJUI,
+                    'rejected' => StatusPengajuan::DITOLAK,
                     default => null
                 };
 

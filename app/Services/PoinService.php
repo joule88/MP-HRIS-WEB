@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\StatusPengajuan;
 use App\Models\PoinLembur;
 use App\Models\DetailPenggunaanPoin;
 use App\Models\PenggunaanPoin;
@@ -50,7 +51,7 @@ class PoinService
 
         $penggunaan = PenggunaanPoin::find($idPenggunaan);
         if ($penggunaan) {
-            $penggunaan->id_status = 2;
+            $penggunaan->id_status = StatusPengajuan::DISETUJUI;
             $penggunaan->save();
         }
     }
@@ -64,6 +65,9 @@ class PoinService
             if ($poinSumber) {
                 $poinSumber->sisa_poin += $detail->jumlah_diambil;
                 $poinSumber->is_fully_used = false;
+                if ($poinSumber->expired_at < now()) {
+                    $poinSumber->expired_at = now()->addDays(7);
+                }
                 $poinSumber->save();
             }
             $detail->delete();
@@ -71,7 +75,7 @@ class PoinService
 
         $penggunaan = PenggunaanPoin::find($idPenggunaan);
         if ($penggunaan) {
-            $penggunaan->id_status = 3;
+            $penggunaan->id_status = StatusPengajuan::DITOLAK;
             $penggunaan->save();
         }
     }

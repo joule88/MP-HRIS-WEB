@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\JenisIzin;
+use App\Enums\StatusPengajuan;
+use App\Enums\StatusPresensi;
+use App\Enums\StatusSurat;
+use App\Enums\StatusValidasi;
 use App\Models\SuratIzin;
 use App\Models\ApprovalSurat;
 use App\Models\TandaTangan;
@@ -22,6 +27,9 @@ class SuratIzinController extends Controller
         $query = SuratIzin::with(['user', 'pengajuanIzin.jenisIzin', 'approvals.approver']);
 
         if (!$isGlobalAdmin) {
+            if (!$user->roles->contains('nama_role', 'manajer')) {
+                $query->where('status_surat', '!=', StatusSurat::MENUNGGU_MANAJER);
+            }
             $query->whereHas('user', function ($q) use ($user) {
                 $q->where('id_kantor', $user->id_kantor);
             });
@@ -67,10 +75,10 @@ class SuratIzinController extends Controller
         // Cegah user yang sama menandatangani di dua tahap berbeda
         $sudahApprove = $surat->approvals->contains('id_approver', $user->id);
 
-        if (!$sudahApprove && $surat->status_surat === 'menunggu_manajer' && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
+        if (!$sudahApprove && $surat->status_surat === StatusSurat::MENUNGGU_MANAJER && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
             $canApprove = true;
             $tahapApproval = 1;
-        } elseif (!$sudahApprove && $surat->status_surat === 'menunggu_hrd' && ($user->roles->contains('nama_role', 'hrd') || $isGlobalAdmin)) {
+        } elseif (!$sudahApprove && $surat->status_surat === StatusSurat::MENUNGGU_HRD && ($user->roles->contains('nama_role', 'hrd') || $isGlobalAdmin)) {
             $canApprove = true;
             $tahapApproval = 2;
         }
@@ -92,7 +100,7 @@ class SuratIzinController extends Controller
                 return redirect()->back()->with('error', 'Anda tidak diizinkan menyetujui surat dari karyawan kantor lain.');
             }
 
-            if (in_array($surat->status_surat, ['disetujui', 'ditolak'])) {
+            if (in_array($surat->status_surat, [StatusSurat::DISETUJUI, StatusSurat::DITOLAK])) {
                 return redirect()->back()->with('error', 'Surat ini sudah diproses sebelumnya.');
             }
 
@@ -107,9 +115,9 @@ class SuratIzinController extends Controller
                 return redirect()->back()->with('error', 'Anda sudah menyetujui surat ini sebelumnya dan tidak dapat menandatangani di posisi lain.');
             }
 
-            if ($surat->status_surat === 'menunggu_manajer' && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
+            if ($surat->status_surat === StatusSurat::MENUNGGU_MANAJER && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
                 $tahap = 1;
-            } elseif ($surat->status_surat === 'menunggu_hrd' && ($user->roles->contains('nama_role', 'hrd') || $isGlobalAdmin)) {
+            } elseif ($surat->status_surat === StatusSurat::MENUNGGU_HRD && ($user->roles->contains('nama_role', 'hrd') || $isGlobalAdmin)) {
                 $tahap = 2;
             }
 
@@ -134,9 +142,9 @@ class SuratIzinController extends Controller
             ]);
 
             if ($tahap === 1) {
-                $surat->update(['status_surat' => 'menunggu_hrd']);
+                $surat->update(['status_surat' => StatusSurat::MENUNGGU_HRD]);
             } elseif ($tahap === 2) {
-                $surat->update(['status_surat' => 'disetujui']);
+                $surat->update(['status_surat' => StatusSurat::DISETUJUI]);
                 $this->prosesPersetujuanFinal($surat);
             }
 
@@ -182,7 +190,7 @@ class SuratIzinController extends Controller
                 return redirect()->back()->with('error', 'Anda tidak diizinkan menolak surat dari karyawan kantor lain.');
             }
 
-            if (in_array($surat->status_surat, ['disetujui', 'ditolak'])) {
+            if (in_array($surat->status_surat, [StatusSurat::DISETUJUI, StatusSurat::DITOLAK])) {
                 return redirect()->back()->with('error', 'Surat ini sudah diproses sebelumnya.');
             }
 
@@ -197,9 +205,9 @@ class SuratIzinController extends Controller
                 return redirect()->back()->with('error', 'Anda sudah menyetujui surat ini sebelumnya dan tidak dapat menolak di posisi lain.');
             }
 
-            if ($surat->status_surat === 'menunggu_manajer' && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
+            if ($surat->status_surat === StatusSurat::MENUNGGU_MANAJER && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
                 $tahap = 1;
-            } elseif ($surat->status_surat === 'menunggu_hrd' && ($user->roles->contains('nama_role', 'hrd') || $isGlobalAdmin)) {
+            } elseif ($surat->status_surat === StatusSurat::MENUNGGU_HRD && ($user->roles->contains('nama_role', 'hrd') || $isGlobalAdmin)) {
                 $tahap = 2;
             }
 
@@ -218,10 +226,10 @@ class SuratIzinController extends Controller
                 'catatan' => $request->catatan,
             ]);
 
-            $surat->update(['status_surat' => 'ditolak']);
+            $surat->update(['status_surat' => StatusSurat::DITOLAK]);
 
             if ($surat->pengajuanIzin) {
-                $surat->pengajuanIzin->update(['id_status' => 3]);
+                $surat->pengajuanIzin->update(['id_status' => StatusPengajuan::DITOLAK]);
             }
 
             DB::commit();
@@ -249,11 +257,11 @@ class SuratIzinController extends Controller
             return;
 
         $izin->load('jenisIzin');
-        $izin->update(['id_status' => 2]);
+        $izin->update(['id_status' => StatusPengajuan::DISETUJUI]);
 
-        $statusPresensiId = 3;
-        if ($izin->id_jenis_izin == 1) {
-            $statusPresensiId = 4;
+        $statusPresensiId = StatusPresensi::IZIN;
+        if ($izin->id_jenis_izin == JenisIzin::SAKIT) {
+            $statusPresensiId = StatusPresensi::SAKIT;
         }
 
         $startDate = Carbon::parse($izin->tanggal_mulai, 'Asia/Jakarta');
@@ -269,16 +277,21 @@ class SuratIzinController extends Controller
                     'id_status' => $statusPresensiId,
                     'jam_masuk' => null,
                     'jam_pulang' => null,
-                    'id_validasi' => 1,
+                    'id_validasi' => StatusValidasi::VALID,
                     'alasan_telat' => $izin->jenisIzin->nama_izin . ': ' . $izin->alasan,
                 ]
             );
             $startDate->addDay();
         }
 
-        if ($izin->id_jenis_izin == 2) {
+        if ($izin->id_jenis_izin == JenisIzin::CUTI) {
             $user = \App\Models\User::find($izin->id_user, ['*']);
             $jumlahHari = Carbon::parse($izin->tanggal_mulai)->diffInDays(Carbon::parse($izin->tanggal_selesai)) + 1;
+            
+            if (($user->sisa_cuti ?? 0) < $jumlahHari) {
+                throw new \Exception("Sisa cuti pegawai tidak mencukupi saat ini ({$user->sisa_cuti} hari).");
+            }
+            
             $newSisa = max(0, ($user->sisa_cuti ?? 0) - $jumlahHari);
             $user->update(['sisa_cuti' => $newSisa]);
         }

@@ -2,15 +2,27 @@
 
 namespace App\Services;
 
+use App\Enums\StatusVerifikasiWajah;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
-use Symfony\Component\Process\Exception\ProcessFailedException;
+use App\Jobs\ProcessFaceEnrollment;
 
 class FaceRecognitionService
 {
-    public function enrollFace($userId, array $photos)
+    private function getCleanEnv(): array
+    {
+        return [
+            'PATH' => getenv('PATH') ?: '',
+            'SYSTEMROOT' => getenv('SYSTEMROOT') ?: 'C:\\Windows',
+            'TEMP' => getenv('TEMP') ?: sys_get_temp_dir(),
+            'TMP' => getenv('TMP') ?: sys_get_temp_dir(),
+        ];
+    }
+
+    public function enrollFace($userId, UploadedFile $video)
     {
         $user = DB::table('users')->where('id', $userId)->first();
         if (!$user) {
@@ -18,111 +30,65 @@ class FaceRecognitionService
         }
 
         $existing = DB::table('data_wajah')->where('id_user', $userId)->first();
-        if ($existing && $existing->is_verified == 1) {
-            throw new \Exception('Wajah Anda sudah terverifikasi. Hubungi HRD untuk reset.', 400);
+        if ($existing && $existing->is_verified == StatusVerifikasiWajah::APPROVED) {
+            $modelPath = "face_models/user_{$userId}_svm.pkl";
+            if (Storage::disk('local')->exists($modelPath)) {
+                throw new \Exception('Wajah Anda sudah terverifikasi. Hubungi HRD untuk reset.', 400);
+            }
+            Log::warning("User {$userId} is_verified=APPROVED tapi model SVM hilang, izinkan re-enrollment.");
         }
 
-        try {
-            DB::beginTransaction();
+        $videoStoragePath = "face_videos/{$userId}";
+        $datasetPath = "face_datasets/{$userId}";
 
-            $storagePath = "face_datasets/{$userId}";
-
-            if (Storage::disk('local')->exists($storagePath)) {
-                Storage::disk('local')->deleteDirectory($storagePath);
-            }
-            Storage::disk('local')->makeDirectory($storagePath);
-
-            $savedPaths = [];
-            foreach ($photos as $pose => $file) {
-                if ($file instanceof UploadedFile) {
-                    $fileName = "user_{$userId}_{$pose}." . $file->getClientOriginalExtension();
-                    $path = $file->storeAs($storagePath, $fileName, 'local');
-                    $savedPaths[$pose] = $path;
-                }
-            }
-
-            DB::table('data_wajah')->updateOrInsert(
-                ['id_user' => $userId],
-                [
-                    'path_model_yml' => null,
-                    'is_verified' => 0,
-                    'last_updated' => now(),
-                ]
-            );
-
-            DB::table('users')
-                ->where('id', $userId)
-                ->update(['is_face_registered' => 1]);
-
-            $trainingSuccess = false;
-
-            try {
-                $pythonPath = env('PYTHON_PATH', 'python');
-                $scriptPath = base_path('python_scripts/train_face.py');
-
-                $absDatasetPath = Storage::disk('local')->path($storagePath);
-                $modelStoragePath = storage_path("app/face_models");
-
-                $process = new Process([
-                    $pythonPath,
-                    $scriptPath,
-                    (string) $userId,
-                    $absDatasetPath,
-                    $modelStoragePath
-                ]);
-
-                $process->setTimeout(120);
-                $process->run();
-
-                if (!$process->isSuccessful()) {
-                    \Illuminate\Support\Facades\Log::warning("Face Training Failed: " . $process->getErrorOutput());
-                } else {
-                    $output = json_decode($process->getOutput(), true);
-                    if (isset($output['status']) && $output['status'] === 'success') {
-                        $trainingSuccess = true;
-                    } else {
-                        \Illuminate\Support\Facades\Log::warning("Face Training Failed: " . ($output['message'] ?? 'Unknown Error'));
-                    }
-                }
-            } catch (\Exception $trainEx) {
-                \Illuminate\Support\Facades\Log::warning("Face Training Error: " . $trainEx->getMessage());
-            }
-
-            $relativeModelPath = "face_models/user_{$userId}.yml";
-
-            // Jika training Python berhasil → otomatis verified
-            // Jika training gagal → tetap pending (is_verified = 0), butuh approval manual HRD
-            DB::table('data_wajah')->where('id_user', $userId)->update([
-                'path_model_yml' => $relativeModelPath,
-                'is_verified'    => $trainingSuccess ? 1 : 0,
-            ]);
-
-            DB::commit();
-
-            return [
-                'status' => true,
-                'message' => 'Foto wajah berhasil didaftarkan dan model telah dilatih.',
-                'dataset_path' => $storagePath
-            ];
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            if (isset($storagePath)) {
-                Storage::disk('local')->deleteDirectory($storagePath);
-            }
-            throw $e;
+        if (Storage::disk('local')->exists($videoStoragePath)) {
+            Storage::disk('local')->deleteDirectory($videoStoragePath);
         }
+        Storage::disk('local')->makeDirectory($videoStoragePath);
+
+        if (Storage::disk('local')->exists($datasetPath)) {
+            $files = Storage::disk('local')->files($datasetPath);
+            foreach ($files as $file) {
+                Storage::disk('local')->delete($file);
+            }
+        } else {
+            Storage::disk('local')->makeDirectory($datasetPath);
+        }
+
+        $video->storeAs($videoStoragePath, 'enrollment.mp4', 'local');
+
+        DB::table('data_wajah')->updateOrInsert(
+            ['id_user' => $userId],
+            [
+                'path_model_yml' => null,
+                'path_model_pkl' => null,
+                'path_scaler_pkl' => null,
+                'path_video' => "{$videoStoragePath}/enrollment.mp4",
+                'jumlah_frame' => null,
+                'is_verified' => StatusVerifikasiWajah::PENDING,
+                'last_updated' => now(),
+            ]
+        );
+
+        DB::table('users')
+            ->where('id', $userId)
+            ->update(['is_face_registered' => 1]);
+
+        ProcessFaceEnrollment::dispatch($userId, $videoStoragePath, $datasetPath);
+
+        return [
+            'status' => true,
+            'message' => 'Video wajah berhasil dikirim. Proses ekstraksi sedang berjalan. Setelah selesai, HRD akan memverifikasi data wajah Anda.',
+        ];
     }
 
     public function verifyFace($userId, UploadedFile $fotoMasuk)
     {
-        $dataWajah = DB::table('data_wajah')
-            ->where('id_user', $userId)
-            ->where('is_verified', 1)
-            ->first();
+        $modelDir = storage_path('app/face_models');
+        $modelFile = $modelDir . '/face_model.pkl';
 
-        if (!$dataWajah || empty($dataWajah->path_model_yml)) {
-            throw new \Exception('Model wajah belum tersedia atau belum diverifikasi.');
+        if (!file_exists($modelFile)) {
+            throw new \Exception('Model wajah belum tersedia. Belum ada data training.');
         }
 
         $tempFileName = "verify_{$userId}_" . time() . ".jpg";
@@ -133,22 +99,16 @@ class FaceRecognitionService
         $absPathFoto = $tempDir . "/{$tempFileName}";
         $fotoMasuk->move($tempDir, $tempFileName);
 
-        $absPathModel = storage_path("app/{$dataWajah->path_model_yml}");
-
-        if (!file_exists($absPathModel)) {
-            @unlink($absPathFoto);
-            throw new \Exception("File model .yml tidak ditemukan: {$dataWajah->path_model_yml}");
-        }
-
         $pythonPath = env('PYTHON_PATH', 'python');
-        $scriptPath = base_path('python_scripts/verify_face.py');
+        $scriptPath = base_path('python_scripts/verify_face_svm.py');
 
         $process = new Process([
             $pythonPath,
             $scriptPath,
-            $absPathModel,
+            $modelDir,
+            (string) $userId,
             $absPathFoto
-        ]);
+        ], null, $this->getCleanEnv());
 
         $process->setTimeout(60);
         $process->run();
@@ -165,14 +125,17 @@ class FaceRecognitionService
             throw new \Exception("Invalid Python output: " . $process->getOutput());
         }
 
-        if ($output['status'] === 'error') {
-            throw new \Exception("Error Verifikasi: " . $output['message']);
+        if (isset($output['status']) && $output['status'] === 'error') {
+            throw new \Exception("Error Verifikasi: " . ($output['message'] ?? 'Unknown error'));
         }
 
         return [
-            'verified' => $output['match'] === true,
+            'verified' => ($output['match'] ?? false) === true,
             'confidence' => $output['confidence'] ?? null,
+            'svm_confidence' => $output['svm_confidence'] ?? null,
+            'normalized_distance' => $output['normalized_distance'] ?? null,
             'verification_status' => $output['verification_status'] ?? 'UNKNOWN',
+            'blur_score' => $output['blur_score'] ?? null,
             'message' => $output['message'] ?? null,
         ];
     }

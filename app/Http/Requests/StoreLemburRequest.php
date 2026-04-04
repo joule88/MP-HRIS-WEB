@@ -22,7 +22,7 @@ class StoreLemburRequest extends FormRequest
         return [
             'tanggal_lembur' => 'required|date',
             'jam_mulai' => 'required|date_format:H:i',
-            'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
+            'jam_selesai' => 'required|date_format:H:i|different:jam_mulai',
             'keterangan' => 'nullable|string|max:255',
             'id_kompensasi' => 'nullable|exists:jenis_kompensasi,id_kompensasi',
         ];

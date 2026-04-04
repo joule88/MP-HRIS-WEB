@@ -2,10 +2,14 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\StatusPresensi;
+use App\Enums\StatusValidasi;
+use App\Enums\StatusPengajuan;
 use Illuminate\Console\Command;
 use App\Models\User;
 use App\Models\Presensi;
 use App\Models\JadwalKerja;
+use App\Models\PengajuanIzin;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -44,10 +48,16 @@ class AutoPresensiJob extends Command
             ->get();
 
         $usersPresensiH1 = Presensi::where('tanggal', $hariIni)->pluck('id_user');
-        $usersH1 = $jadwalH1->pluck('id_user');
-        $usersAlphaH1 = $usersH1->diff($usersPresensiH1);
 
-        $idAlpha = DB::table('status_presensi')->where('nama_status', 'Alpha')->value('id_status') ?? 0;
+        $usersIzinH1 = PengajuanIzin::whereIn('id_status', [StatusPengajuan::PENDING, StatusPengajuan::DISETUJUI])
+            ->where('tanggal_mulai', '<=', $hariIni)
+            ->where('tanggal_selesai', '>=', $hariIni)
+            ->pluck('id_user');
+
+        $usersH1 = $jadwalH1->pluck('id_user');
+        $usersAlphaH1 = $usersH1->diff($usersPresensiH1)->diff($usersIzinH1);
+
+        $idAlpha = StatusPresensi::ALPHA;
 
         // 1. Pegawai H-1 yang sama sekali tidak absen masuk
         foreach ($usersAlphaH1 as $userId) {
@@ -55,7 +65,7 @@ class AutoPresensiJob extends Command
                 'id_user' => $userId,
                 'tanggal' => $hariIni,
                 'id_status' => $idAlpha,
-                'id_validasi' => 1,
+                'id_validasi' => StatusValidasi::VALID,
                 'alasan_telat' => 'Auto Alpha by System'
             ]);
         }
@@ -80,12 +90,10 @@ class AutoPresensiJob extends Command
                 }
             }
 
-            // Eksekusi jika bukan shift malam
+            // Shift normal: lupa pulang = BUKAN alpha (dia tetap masuk), hanya tambah catatan
             if (!$isNightShift) {
                 $presensi->update([
-                    'id_status' => $idAlpha,
-                    'id_validasi' => 1,
-                    'alasan_telat' => 'Auto Alpha: Lupa Absen Pulang (Shift Normal)'
+                    'keterangan_pulang' => 'Lupa Absen Pulang - Hubungi HRD untuk koreksi'
                 ]);
                 $countIncomplete++;
             }
@@ -107,12 +115,10 @@ class AutoPresensiJob extends Command
                 }
             }
 
-            // Eksekusi HANYA jika ia benar shift malam
+            // Shift malam: lupa pulang = BUKAN alpha, hanya catatan
             if ($isNightShift) {
                 $presensi->update([
-                    'id_status' => $idAlpha,
-                    'id_validasi' => 1,
-                    'alasan_telat' => 'Auto Alpha: Lupa Absen Pulang (Shift Malam)'
+                    'keterangan_pulang' => 'Lupa Absen Pulang - Hubungi HRD untuk koreksi'
                 ]);
                 $countIncomplete++;
             }

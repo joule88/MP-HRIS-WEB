@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\StatusPengajuan;
 use App\Models\PenggunaanPoin;
 use App\Services\PoinService;
 use App\Services\NotifikasiService;
@@ -19,8 +20,18 @@ class PenggunaanPoinController extends Controller
 
     public function index()
     {
-        $penggunaan = PenggunaanPoin::with(['user', 'jenisPengurangan', 'status'])
-            ->orderByRaw("CASE WHEN id_status = 1 THEN 0 ELSE 1 END")
+        $user = \Illuminate\Support\Facades\Auth::user();
+        $isGlobalAdmin = $user->isGlobalAdmin();
+
+        $query = PenggunaanPoin::with(['user', 'jenisPengurangan', 'status']);
+
+        if (!$isGlobalAdmin) {
+            $query->whereHas('user', function ($q) use ($user) {
+                $q->where('id_kantor', $user->id_kantor);
+            });
+        }
+
+        $penggunaan = $query->orderByRaw("CASE WHEN id_status = " . StatusPengajuan::PENDING . " THEN 0 ELSE 1 END")
             ->orderBy('tanggal_diajukan', 'desc')
             ->paginate(10);
 
@@ -36,10 +47,31 @@ class PenggunaanPoinController extends Controller
 
         $penggunaan = PenggunaanPoin::findOrFail($id);
 
+        $penggunaan->load('user');
+        $userAuth = \Illuminate\Support\Facades\Auth::user();
+        if (!$userAuth->isGlobalAdmin() && $penggunaan->user->id_kantor != $userAuth->id_kantor) {
+            return redirect()->back()->with('error', 'Anda tidak diizinkan memproses data dari kantor lain.');
+        }
+
+        if ($request->action == 'approve' && $penggunaan->id_status != StatusPengajuan::PENDING) {
+            return redirect()->back()->with('error', 'Hanya pengajuan PENDING yang dapat disetujui.');
+        }
+        
+        if ($request->action == 'reject' && in_array($penggunaan->id_status, [StatusPengajuan::DITOLAK])) {
+            return redirect()->back()->with('error', 'Pengajuan ini sudah ditolak.');
+        }
+
         try {
             if ($request->action == 'approve') {
+                $saldoAktif = $this->poinService->getActivePoints($penggunaan->id_user);
+                if ($saldoAktif < $penggunaan->jumlah_poin) {
+                    return redirect()->back()->with('error',
+                        'Saldo poin pegawai tidak mencukupi (mungkin sudah expired). Saldo aktif: ' . $saldoAktif . ', dibutuhkan: ' . $penggunaan->jumlah_poin
+                    );
+                }
+
                 DB::transaction(function () use ($penggunaan) {
-                    $penggunaan->update(['id_status' => 2]);
+                    $penggunaan->update(['id_status' => StatusPengajuan::DISETUJUI]);
                     $this->poinService->deductPoin(
                         $penggunaan->id_user,
                         $penggunaan->jumlah_poin,
@@ -57,10 +89,15 @@ class PenggunaanPoinController extends Controller
 
                 $message = 'Pengajuan berhasil disetujui dan poin telah dipotong.';
             } else {
-                $penggunaan->update([
-                    'id_status' => 3,
-                    'alasan_penolakan' => $request->alasan_penolakan
-                ]);
+                DB::transaction(function () use ($penggunaan, $request) {
+                    if ($penggunaan->id_status == StatusPengajuan::DISETUJUI) {
+                        $this->poinService->refundPoin($penggunaan->id_penggunaan);
+                    }
+                    $penggunaan->update([
+                        'id_status' => StatusPengajuan::DITOLAK,
+                        'alasan_penolakan' => $request->alasan_penolakan
+                    ]);
+                });
 
                 app(NotifikasiService::class)->kirim(
                     $penggunaan->id_user,
