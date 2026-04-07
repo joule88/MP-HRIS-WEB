@@ -254,12 +254,12 @@
                                         {{ \Carbon\Carbon::parse($presensi->tanggal)->translatedFormat('d M Y') }}
                                     </td>
                                     <td class="px-6 py-4 text-sm text-slate-600 text-center whitespace-nowrap">
-                                        {{ $presensi->jadwal->shift->nama_shift ?? 'Shift Default' }}<br>
-                                        <span class="text-xs text-slate-400">{{ substr($presensi->jadwal->shift->jam_mulai ?? '08:00', 0, 5) }} - {{ substr($presensi->jadwal->shift->jam_selesai ?? '17:00', 0, 5) }}</span>
+                                        {{ $presensi->jadwal?->shift?->nama_shift ?? 'Shift Default' }}<br>
+                                        <span class="text-xs text-slate-400">{{ substr($presensi->jadwal?->shift?->jam_mulai ?? '08:00', 0, 5) }} - {{ substr($presensi->jadwal?->shift?->jam_selesai ?? '17:00', 0, 5) }}</span>
                                     </td>
                                     <td class="px-6 py-4 text-center whitespace-nowrap">
                                         <div class="flex flex-col text-sm items-center justify-center">
-                                            <span class="font-mono font-bold {{ $presensi->jam_masuk > ($presensi->jadwal->shift->jam_mulai ?? '08:00') ? 'text-red-600' : 'text-emerald-600' }}">
+                                            <span class="font-mono font-bold {{ $presensi->jam_masuk > ($presensi->jadwal?->shift?->jam_mulai ?? '08:00') ? 'text-red-600' : 'text-emerald-600' }}">
                                                 {{ $presensi->jam_masuk ? \Carbon\Carbon::parse($presensi->jam_masuk)->format('H:i') : '--:--' }}
                                             </span>
                                             <span class="text-xs text-slate-400 font-mono mt-0.5">s/d</span>

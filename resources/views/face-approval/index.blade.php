@@ -1,3 +1,4 @@
+@php use App\Enums\StatusVerifikasiWajah; @endphp
 @extends('layouts.app')
 
 @section('title', 'Verifikasi Wajah')
@@ -109,12 +110,13 @@
 
                 @forelse ($users as $user)
                     @php
+
                         $dw = $user->dataWajah;
                         $faceStatus = 'unregistered';
                         if ($dw) {
-                            if ($dw->is_verified == 0) $faceStatus = 'pending';
-                            elseif ($dw->is_verified == 1) $faceStatus = 'approved';
-                            elseif ($dw->is_verified == 2) $faceStatus = 'rejected';
+                            if ($dw->is_verified == StatusVerifikasiWajah::PENDING)   $faceStatus = 'pending';
+                            elseif ($dw->is_verified == StatusVerifikasiWajah::APPROVED) $faceStatus = 'approved';
+                            elseif ($dw->is_verified == StatusVerifikasiWajah::REJECTED)  $faceStatus = 'rejected';
                         }
                     @endphp
                     <tr class="hover:bg-slate-50 transition-colors">

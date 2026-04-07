@@ -6,6 +6,7 @@ use App\Enums\StatusPresensi;
 use App\Models\User;
 use App\Models\Presensi;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
@@ -17,11 +18,15 @@ class LaporanController extends Controller
 {
     public function index(Request $request)
     {
-        $bulan = $request->input('bulan', date('m'));
-        $tahun = $request->input('tahun', date('Y'));
+        $bulan    = $request->input('bulan', date('m'));
+        $tahun    = $request->input('tahun', date('Y'));
         $divisiId = $request->input('id_divisi');
 
-        $rekap = $this->buildRekap($bulan, $tahun, $divisiId);
+        $authUser     = Auth::user();
+        $isGlobalAdmin = $authUser->isGlobalAdmin();
+        $kantorId      = $isGlobalAdmin ? null : $authUser->id_kantor;
+
+        $rekap     = $this->buildRekap($bulan, $tahun, $divisiId, $kantorId);
         $divisiList = \App\Models\Divisi::all();
 
         return view('laporan.index', compact('rekap', 'bulan', 'tahun', 'divisiList', 'divisiId'));
@@ -29,14 +34,23 @@ class LaporanController extends Controller
 
     public function cuti(Request $request)
     {
-        $bulan = $request->input('bulan', date('m'));
-        $tahun = $request->input('tahun', date('Y'));
-        $search = $request->input('search');
+        $bulan    = $request->input('bulan', date('m'));
+        $tahun    = $request->input('tahun', date('Y'));
+        $search   = $request->input('search');
         $divisiId = $request->input('id_divisi');
+
+        $authUser     = Auth::user();
+        $isGlobalAdmin = $authUser->isGlobalAdmin();
 
         $query = \App\Models\PengajuanIzin::with(['user.divisi', 'jenisIzin'])
             ->whereYear('tanggal_mulai', $tahun)
             ->whereMonth('tanggal_mulai', $bulan);
+
+        if (!$isGlobalAdmin) {
+            $query->whereHas('user', function ($q) use ($authUser) {
+                $q->where('id_kantor', $authUser->id_kantor);
+            });
+        }
 
         if ($search) {
             $query->whereHas('user', function($q) use ($search) {
@@ -51,7 +65,7 @@ class LaporanController extends Controller
             });
         }
 
-        $izinList = $query->orderBy('tanggal_mulai', 'desc')->paginate(15)->withQueryString();
+        $izinList   = $query->orderBy('tanggal_mulai', 'desc')->paginate(15)->withQueryString();
         $divisiList = \App\Models\Divisi::all();
 
         return view('laporan.izin', compact('izinList', 'bulan', 'tahun', 'search', 'divisiId', 'divisiList'));
@@ -64,9 +78,18 @@ class LaporanController extends Controller
         $search   = $request->input('search');
         $divisiId = $request->input('id_divisi');
 
+        $authUser     = Auth::user();
+        $isGlobalAdmin = $authUser->isGlobalAdmin();
+
         $query = \App\Models\PengajuanIzin::with(['user.divisi', 'jenisIzin'])
             ->whereYear('tanggal_mulai', $tahun)
             ->whereMonth('tanggal_mulai', $bulan);
+
+        if (!$isGlobalAdmin) {
+            $query->whereHas('user', function ($q) use ($authUser) {
+                $q->where('id_kantor', $authUser->id_kantor);
+            });
+        }
 
         if ($search) {
             $query->whereHas('user', function ($q) use ($search) {
@@ -94,11 +117,14 @@ class LaporanController extends Controller
 
     public function exportExcel(Request $request)
     {
-        $bulan = $request->input('bulan', date('m'));
-        $tahun = $request->input('tahun', date('Y'));
+        $bulan    = $request->input('bulan', date('m'));
+        $tahun    = $request->input('tahun', date('Y'));
         $divisiId = $request->input('id_divisi');
 
-        $rekap = $this->buildRekap($bulan, $tahun, $divisiId);
+        $authUser  = Auth::user();
+        $kantorId  = $authUser->isGlobalAdmin() ? null : $authUser->id_kantor;
+
+        $rekap = $this->buildRekap($bulan, $tahun, $divisiId, $kantorId);
 
         if (empty($rekap)) {
             return redirect()->back()->with('error', 'Tidak ada data presensi untuk diekspor pada periode tersebut.');
@@ -111,11 +137,14 @@ class LaporanController extends Controller
 
     public function exportPdf(Request $request)
     {
-        $bulan = $request->input('bulan', date('m'));
-        $tahun = $request->input('tahun', date('Y'));
+        $bulan    = $request->input('bulan', date('m'));
+        $tahun    = $request->input('tahun', date('Y'));
         $divisiId = $request->input('id_divisi');
 
-        $rekap = $this->buildRekap($bulan, $tahun, $divisiId);
+        $authUser = Auth::user();
+        $kantorId = $authUser->isGlobalAdmin() ? null : $authUser->id_kantor;
+
+        $rekap = $this->buildRekap($bulan, $tahun, $divisiId, $kantorId);
 
         $pdf = Pdf::loadView('laporan.pdf', compact('rekap', 'bulan', 'tahun'));
         $pdf->setPaper('a4', 'landscape');
@@ -123,18 +152,23 @@ class LaporanController extends Controller
         return $pdf->download("Laporan_Presensi_{$bulan}_{$tahun}.pdf");
     }
 
-    private function buildRekap(int $bulan, int $tahun, $divisiId = null): array
+    private function buildRekap(int $bulan, int $tahun, $divisiId = null, $kantorId = null): array
     {
         $idTepatWaktu = StatusPresensi::TEPAT_WAKTU;
-        $idTerlambat = StatusPresensi::TERLAMBAT;
-        $idIzin = StatusPresensi::IZIN;
-        $idSakit = StatusPresensi::SAKIT;
-        $idAlpha = StatusPresensi::ALPHA;
+        $idTerlambat  = StatusPresensi::TERLAMBAT;
+        $idIzin       = StatusPresensi::IZIN;
+        $idSakit      = StatusPresensi::SAKIT;
+        $idAlpha      = StatusPresensi::ALPHA;
 
         $pegawaiQuery = User::with(['jabatan', 'divisi'])
             ->where('status_aktif', 1)
+            ->bukanHrd()
             ->select('id', 'nama_lengkap', 'nik', 'id_jabatan', 'id_divisi')
             ->orderBy('nama_lengkap', 'asc');
+
+        if ($kantorId) {
+            $pegawaiQuery->where('id_kantor', $kantorId);
+        }
 
         if ($divisiId) {
             $pegawaiQuery->where('id_divisi', $divisiId);

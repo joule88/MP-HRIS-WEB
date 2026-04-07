@@ -181,7 +181,7 @@ class SuratIzinController extends Controller
     public function reject(Request $request, $id)
     {
         try {
-            $surat = SuratIzin::with('user')->findOrFail($id);
+            $surat = SuratIzin::with(['user', 'pengajuanIzin'])->findOrFail($id);
             $user = Auth::user();
             $isGlobalAdmin = $user->isGlobalAdmin();
 

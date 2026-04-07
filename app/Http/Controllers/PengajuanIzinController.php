@@ -7,8 +7,13 @@ use App\Enums\StatusPengajuan;
 use App\Enums\StatusPresensi;
 use App\Enums\StatusSurat;
 use App\Enums\StatusValidasi;
+use App\Http\Requests\StorePengajuanIzinRequest;
+use App\Models\Divisi;
+use App\Models\JenisIzin;
+use App\Models\Kantor;
 use App\Models\PengajuanIzin;
 use App\Models\Presensi;
+use App\Models\StatusPengajuan as StatusPengajuanModel;
 use App\Models\User;
 use App\Models\SuratIzin;
 use App\Models\TandaTangan;
@@ -47,28 +52,31 @@ class PengajuanIzinController extends Controller
 
         $izin = $query->orderBy('created_at', 'desc')->paginate(15);
 
-        $statuses = \App\Models\StatusPengajuan::all();
-        $jenisIzin = \App\Models\JenisIzin::all();
-        $users = \App\Models\User::with(['kantor', 'divisi', 'jabatan'])->select('id', 'nama_lengkap', 'nik', 'id_kantor', 'id_divisi', 'id_jabatan')->orderBy('nama_lengkap', 'asc')->get();
-        $kantor = \App\Models\Kantor::all();
-        $divisi = \App\Models\Divisi::all();
+        $statuses = StatusPengajuanModel::orderBy('id_status')->get();
+        $jenisIzinList = JenisIzin::all();
 
-        return view('izin.index', compact('izin', 'statusId', 'statuses', 'jenisIzin', 'users', 'kantor', 'divisi'));
+        $usersQuery = User::with(['kantor', 'divisi', 'jabatan'])
+            ->select('id', 'nama_lengkap', 'nik', 'id_kantor', 'id_divisi', 'id_jabatan')
+            ->where('status_aktif', 1)
+            ->bukanHrd()
+            ->orderBy('nama_lengkap', 'asc');
+
+        if (!$isGlobalAdmin) {
+            $usersQuery->where('id_kantor', $user->id_kantor);
+        }
+
+        $users = $usersQuery->get();
+        $kantor = $isGlobalAdmin ? Kantor::all() : Kantor::where('id_kantor', $user->id_kantor)->get();
+        $divisi = Divisi::all();
+
+        return view('izin.index', compact('izin', 'statusId', 'statuses', 'jenisIzinList', 'users', 'kantor', 'divisi'));
     }
 
-    public function store(Request $request)
+    public function store(StorePengajuanIzinRequest $request)
     {
-        $request->validate([
-            'id_user' => 'required|exists:users,id',
-            'id_jenis_izin' => 'required|exists:jenis_izin,id_jenis_izin',
-            'tanggal_mulai' => 'required|date|after_or_equal:today',
-            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-            'alasan' => 'required|string',
-            'bukti_file' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048'
-        ]);
 
-        $jenisIzin = \App\Models\JenisIzin::find($request->id_jenis_izin);
-        if ($jenisIzin && $jenisIzin->nama_izin == 'Cuti') {
+        $jenisIzinData = JenisIzin::find($request->id_jenis_izin);
+        if ($jenisIzinData && $jenisIzinData->id_jenis_izin == JenisIzinEnum::CUTI) {
             $pegawai = User::find($request->id_user);
             $tanggalMulai = Carbon::parse($request->tanggal_mulai);
             $tanggalSelesai = Carbon::parse($request->tanggal_selesai);
@@ -88,12 +96,12 @@ class PengajuanIzinController extends Controller
             }
         }
 
-        if ($jenisIzin && $jenisIzin->id_jenis_izin == \App\Enums\JenisIzin::SAKIT) {
+        if ($jenisIzinData && $jenisIzinData->id_jenis_izin == JenisIzinEnum::SAKIT) {
             $tanggalMulai = Carbon::parse($request->tanggal_mulai);
             $jumlahHari = $tanggalMulai->diffInDays(Carbon::parse($request->tanggal_selesai)) + 1;
 
             $sudahSakitBulanIni = PengajuanIzin::where('id_user', $request->id_user)
-                ->where('id_jenis_izin', \App\Enums\JenisIzin::SAKIT)
+                ->where('id_jenis_izin', JenisIzinEnum::SAKIT)
                 ->whereIn('id_status', [StatusPengajuan::PENDING, StatusPengajuan::DISETUJUI])
                 ->whereMonth('tanggal_mulai', $tanggalMulai->month)
                 ->whereYear('tanggal_mulai', $tanggalMulai->year)
@@ -127,7 +135,7 @@ class PengajuanIzinController extends Controller
             return back()->withInput()->with('error', 'Pegawai sudah memiliki pengajuan Izin/Cuti (Pending/Disetujui) pada rentang tanggal tersebut!');
         }
 
-        $existingPresensi = \App\Models\Presensi::where('id_user', $userId)
+        $existingPresensi = Presensi::where('id_user', $userId)
             ->whereBetween('tanggal', [$tglMulai, $tglSelesai])
             ->whereNotNull('jam_masuk')
             ->exists();
@@ -260,10 +268,9 @@ class PengajuanIzinController extends Controller
 
     public function reject(Request $request, $id)
     {
-        $izin = PengajuanIzin::with('user')->findOrFail($id);
+        $izin = PengajuanIzin::with(['user', 'jenisIzin'])->findOrFail($id);
         $user = Auth::user();
 
-        // Security Check
         if (!$user->isGlobalAdmin() && $izin->user->id_kantor != $user->id_kantor) {
             return redirect()->back()->with('error', 'Anda tidak diizinkan menolak pengajuan dari kantor lain.');
         }
@@ -276,18 +283,29 @@ class PengajuanIzinController extends Controller
             return redirect()->back()->with('error', 'Pengajuan Cuti harus ditolak melalui menu Surat Izin.');
         }
 
-        $izin->update([
-            'id_status' => StatusPengajuan::DITOLAK
-        ]);
+        try {
+            DB::beginTransaction();
 
-        app(NotifikasiService::class)->kirim(
-            $izin->id_user,
-            'izin_ditolak',
-            'Pengajuan Izin Ditolak',
-            'Pengajuan ' . ($izin->jenisIzin->nama_izin ?? 'Izin') . ' Anda ditolak.',
-            ['id_izin' => $izin->id_izin]
-        );
+            $izin->update([
+                'id_status'         => StatusPengajuan::DITOLAK,
+                'alasan_penolakan'  => $request->alasan_penolakan,
+            ]);
 
-        return redirect()->back()->with('success', 'Pengajuan izin berhasil ditolak.');
+            DB::commit();
+
+            app(NotifikasiService::class)->kirim(
+                $izin->id_user,
+                'izin_ditolak',
+                'Pengajuan Izin Ditolak',
+                'Pengajuan ' . ($izin->jenisIzin->nama_izin ?? 'Izin') . ' Anda ditolak. Catatan: ' . ($request->alasan_penolakan ?? '-'),
+                ['id_izin' => $izin->id_izin]
+            );
+
+            return redirect()->back()->with('success', 'Pengajuan izin berhasil ditolak.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal menolak pengajuan: ' . $e->getMessage());
+        }
     }
 }

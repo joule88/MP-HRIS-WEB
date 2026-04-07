@@ -15,7 +15,7 @@
                     <x-select label="Bulan" name="bulan" class="!mb-0">
                         @for ($i = 1; $i <= 12; $i++)
                             <option value="{{ $i }}" {{ $bulan == $i ? 'selected' : '' }}>
-                                {{ DateTime::createFromFormat('!m', $i)->format('F') }}
+                                {{ \Carbon\Carbon::create()->month($i)->translatedFormat('F') }}
                             </option>
                         @endfor
                     </x-select>
@@ -130,7 +130,7 @@
                         </td>
                     </tr>
                 @empty
-                    <x-empty-state colspan="7" message="Tidak ada data presensi pada periode ini" />
+                    <x-empty-state colspan="8" message="Tidak ada data presensi pada periode ini" />
                 @endforelse
             </x-table>
         </div>

@@ -65,7 +65,7 @@ class PengajuanIzin extends Model
         'tanggal_selesai',
         'alasan',
         'bukti_file',
-
+        'alasan_penolakan',
     ];
 
     public function user()

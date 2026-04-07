@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Penggunaan Poin')
 
@@ -20,33 +20,33 @@
             </x-slot:header>
 
             @forelse ($penggunaan as $index => $item)
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-6 py-4 text-sm text-gray-700">
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 text-sm text-slate-700">
                         {{ $penggunaan->firstItem() + $index }}
                     </td>
                     <td class="px-6 py-4">
-                        <div class="text-sm font-medium text-gray-900">{{ $item->user->nama_lengkap ?? '-' }}</div>
-                        <div class="text-xs text-gray-500">{{ $item->user->divisi->nama_divisi ?? '' }}</div>
+                        <div class="text-sm font-medium text-slate-900">{{ $item->user->nama_lengkap ?? '-' }}</div>
+                        <div class="text-xs text-slate-500">{{ $item->user->divisi->nama_divisi ?? '' }}</div>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-700">
+                    <td class="px-6 py-4 text-sm text-slate-700">
                         {{ $item->tanggal_penggunaan ? $item->tanggal_penggunaan->translatedFormat('d F Y') : '-' }}
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-700">
+                    <td class="px-6 py-4 text-sm text-slate-700">
                         {{ $item->jenisPengurangan->nama_pengurangan ?? 'Lainnya' }}
                     </td>
                     <td class="px-6 py-4">
                         <span class="font-bold text-amber-600">{{ $item->jumlah_poin }} Poin</span>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-500">
+                    <td class="px-6 py-4 text-sm text-slate-500">
                         {{ $item->tanggal_diajukan ? $item->tanggal_diajukan->translatedFormat('d M Y H:i') : '-' }}
                     </td>
                     <td class="px-6 py-4">
                         @php
                             $idStatus = $item->id_status;
                             $badgeColor = match ($idStatus) {
-                                1 => 'yellow',
-                                2 => 'green',
-                                3 => 'red',
+                                \App\Enums\StatusPengajuan::PENDING   => 'yellow',
+                                \App\Enums\StatusPengajuan::DISETUJUI => 'green',
+                                \App\Enums\StatusPengajuan::DITOLAK   => 'red',
                                 default => 'gray'
                             };
                         @endphp
@@ -55,9 +55,9 @@
                         </x-badge>
                     </td>
                     <td class="px-6 py-4 text-right">
-                        @if($item->id_status == 1) 
+                        @if($item->id_status == \App\Enums\StatusPengajuan::PENDING)
                             <div class="flex justify-end gap-2">
-                                
+
                                 <form action="{{ route('penggunaan-poin.update', $item->id_penggunaan) }}" method="POST">
                                     @csrf
                                     @method('PUT')
@@ -65,10 +65,7 @@
                                     <button type="submit"
                                         class="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 p-2 rounded-lg transition-all"
                                         title="Setujui">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M5 13l4 4L19 7"></path>
-                                        </svg>
+                                        <span class="text-xs font-semibold px-1">Setuju</span>
                                     </button>
                                 </form>
 
@@ -76,14 +73,11 @@
                                     onclick="openRejectModal('{{ route('penggunaan-poin.update', $item->id_penggunaan) }}')"
                                     class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-all"
                                     title="Tolak">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
+                                    <span class="text-xs font-semibold px-1">Tolak</span>
                                 </button>
                             </div>
                         @else
-                            <span class="text-xs text-gray-400 italic">Selesai</span>
+                            <span class="text-xs text-slate-400 italic">Selesai</span>
                         @endif
                     </td>
                 </tr>
@@ -106,7 +100,7 @@
                     placeholder="Jelaskan alasan kenapa pengajuan ini ditolak..." required rows="3" />
             </div>
 
-            <div class="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-4">
+            <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
                 <x-button type="button" variant="secondary" x-data
                     @click="$dispatch('close-modal', 'reject-modal')">Batal</x-button>
                 <x-button type="submit" class="bg-red-600 hover:bg-red-700 text-white">Tolak Pengajuan</x-button>

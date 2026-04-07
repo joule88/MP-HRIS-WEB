@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Tukar Shift Kerja')
 
@@ -190,7 +190,7 @@
                 form.addEventListener('submit', function (e) {
                     if (user1Select.value === user2Select.value && user1Select.value !== '') {
                         e.preventDefault();
-                        alert('Pegawai pertama dan kedua tidak boleh orang yang sama!');
+                        Swal.fire('Peringatan', 'Pegawai pertama dan kedua tidak boleh orang yang sama!', 'warning');
                     }
                 });
             }
@@ -280,7 +280,7 @@
                 } catch (error) {
                     console.error('Error fetching schedules:', error);
                     targetSelect.innerHTML = '<option value="">Gagal mengambil data</option>';
-                    alert('Terjadi kesalahan saat mengambil jadwal pegawai: ' + error.message);
+                    Swal.fire('Gagal', 'Terjadi kesalahan saat mengambil jadwal pegawai: ' + error.message, 'error');
                 } finally {
                     if (loadingEl) { loadingEl.classList.add('hidden'); }
                     if (arrowEl) { arrowEl.classList.remove('hidden'); }
@@ -319,5 +319,6 @@
             document.addEventListener('DOMContentLoaded', initTukarShiftForm);
         }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="{{ asset('js/form-handler.js') }}"></script>
 @endsection

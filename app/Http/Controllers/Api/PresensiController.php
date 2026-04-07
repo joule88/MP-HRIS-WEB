@@ -258,8 +258,15 @@ class PresensiController extends Controller
                     try {
                         $masuk = Carbon::parse($item->tanggal . ' ' . $item->jam_masuk);
                         $pulang = Carbon::parse($item->tanggal . ' ' . $item->jam_pulang);
-                        $diff = $masuk->diff($pulang);
-                        $totalJam = $diff->h . 'j ' . $diff->i . 'm';
+                        
+                        if ($pulang->lessThan($masuk)) {
+                            $pulang->addDay();
+                        }
+                        
+                        $diffMinutes = $pulang->diffInMinutes($masuk);
+                        $hours = floor($diffMinutes / 60);
+                        $minutes = $diffMinutes % 60;
+                        $totalJam = $hours . 'j ' . $minutes . 'm';
                     } catch (\Exception $e) {
                         $totalJam = '-';
                     }

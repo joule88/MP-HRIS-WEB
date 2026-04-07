@@ -2,6 +2,40 @@
 
 @section('title', 'Pengaturan Akun')
 
+@section('style')
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+    <style>
+        .cropper-view-box,
+        .cropper-face {
+            border-radius: 50%;
+        }
+
+        .cropper-view-box {
+            outline: 3px solid rgba(255, 255, 255, 0.8);
+            outline-offset: 0;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+        }
+
+        .cropper-face {
+            background-color: transparent !important;
+        }
+
+        .cropper-dashed,
+        .cropper-point,
+        .cropper-line {
+            display: none !important;
+        }
+
+        .cropper-crop-box {
+            border-radius: 50%;
+        }
+
+        .cropper-modal {
+            background-color: rgba(15, 23, 42, 0.85);
+        }
+    </style>
+@endsection
+
 @section('content')
     <div class="max-w-3xl mx-auto space-y-6">
 
@@ -49,7 +83,7 @@
                             </div>
                             <div class="text-center">
                                 <h3 class="font-bold text-slate-800">{{ auth()->user()->nama_lengkap }}</h3>
-                                <p class="text-sm text-slate-500">{{ auth()->user()->role->nama_role ?? 'User' }}</p>
+                                <p class="text-sm text-slate-500">{{ auth()->user()->roles->first()->nama_role ?? 'User' }}</p>
                             </div>
                         </div>
 
@@ -74,7 +108,7 @@
                     </div>
 
                     <div class="flex justify-end pt-6 border-t border-slate-100">
-                        <button type="submit"
+                        <button type="submit" id="submitBtn"
                             class="px-6 py-2.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition shadow-lg shadow-indigo-500/20">
                             Simpan Perubahan
                         </button>
@@ -165,41 +199,9 @@
             </div>
         </div>
     </div>
+@endsection
 
-    {{-- Cropper.js CDN --}}
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+@section('script')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
     <script src="{{ asset('js/image-cropper.js') }}"></script>
-
-    {{-- Cropper circular overlay --}}
-    <style>
-        .cropper-view-box,
-        .cropper-face {
-            border-radius: 50%;
-        }
-
-        .cropper-view-box {
-            outline: 3px solid rgba(255, 255, 255, 0.8);
-            outline-offset: 0;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
-        }
-
-        .cropper-face {
-            background-color: transparent !important;
-        }
-
-        .cropper-dashed,
-        .cropper-point,
-        .cropper-line {
-            display: none !important;
-        }
-
-        .cropper-crop-box {
-            border-radius: 50%;
-        }
-
-        .cropper-modal {
-            background-color: rgba(15, 23, 42, 0.85);
-        }
-    </style>
 @endsection

@@ -37,7 +37,7 @@
 
                 @forelse($roles as $index => $role)
                     @php
-                        $roleKritis = in_array(strtolower($role->nama_role), ['manajer', 'manager', 'supervisor', 'hrd', 'super_admin', 'staff']);
+                        $roleKritis = in_array(strtolower($role->nama_role), \App\Http\Controllers\RoleController::ROLE_KRITIS);
                     @endphp
                     <tr class="hover:bg-slate-50 transition border-b border-slate-50 last:border-b-0">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{{ $roles->firstItem() + $index }}</td>

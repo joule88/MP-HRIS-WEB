@@ -15,12 +15,12 @@ return new class extends Migration
             Schema::create('log_verifikasi_wajah', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('id_user');
-                $table->decimal('confidence', 5, 4)->nullable();
-                $table->decimal('svm_confidence', 5, 4)->nullable();
-                $table->decimal('normalized_distance', 8, 4)->nullable();
-                $table->string('verification_status', 30)->nullable();
-                $table->boolean('is_match')->default(false);
-                $table->decimal('blur_score', 6, 1)->nullable();
+                $table->decimal('skor_kepercayaan', 5, 4)->nullable();
+                $table->decimal('skor_svm', 5, 4)->nullable();
+                $table->decimal('jarak_normalisasi', 8, 4)->nullable();
+                $table->string('status_verifikasi', 30)->nullable();
+                $table->boolean('apakah_cocok')->default(false);
+                $table->decimal('skor_blur', 6, 1)->nullable();
                 $table->string('tipe', 10)->default('presensi');
                 $table->timestamps();
 

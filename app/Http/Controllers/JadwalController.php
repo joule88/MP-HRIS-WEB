@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use App\Models\PenggunaanPoin;
 use App\Services\PoinService;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\StoreJadwalRequest;
+use App\Http\Requests\BulkDestroyJadwalRequest;
 
 class JadwalController extends Controller
 {
@@ -28,7 +30,7 @@ class JadwalController extends Controller
             return $s;
         });
 
-        $pegawaiQuery = User::where('status_aktif', 1);
+        $pegawaiQuery = User::where('status_aktif', 1)->bukanHrd();
         if (!$isGlobalAdmin) {
             $pegawaiQuery->where('id_kantor', $user->id_kantor);
         }
@@ -211,7 +213,7 @@ class JadwalController extends Controller
         $kantor = $isGlobalAdmin ? Kantor::all() : Kantor::where('id_kantor', $user->id_kantor)->get();
         $divisi = Divisi::all();
 
-        $pegawaiQuery = User::where('status_aktif', 1)->with(['kantor', 'jabatan']);
+        $pegawaiQuery = User::where('status_aktif', 1)->bukanHrd()->with(['kantor', 'jabatan']);
         if (!$isGlobalAdmin) {
             $pegawaiQuery->where('id_kantor', $user->id_kantor);
         }
@@ -220,15 +222,9 @@ class JadwalController extends Controller
         return view('jadwal.create', compact('shifts', 'pegawai', 'kantor', 'divisi'));
     }
 
-    public function store(Request $request)
+    public function store(StoreJadwalRequest $request)
     {
-        $request->validate([
-            'tanggal_mulai' => 'required|date',
-            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-            'id_shift' => 'required|exists:shift_kerja,id_shift',
-            'user_ids' => 'required|array',
-            'user_ids.*' => 'exists:users,id',
-        ]);
+        $data = $request->validated();
 
         // Guard: pastikan ada data shift sebelum memproses
         if (ShiftKerja::count() === 0) {
@@ -249,12 +245,12 @@ class JadwalController extends Controller
             }
         }
 
-        $startDate = Carbon::parse($request->tanggal_mulai);
-        $endDate = Carbon::parse($request->tanggal_selesai);
+        $startDate = Carbon::parse($data['tanggal_mulai']);
+        $endDate = Carbon::parse($data['tanggal_selesai']);
         $period = \Carbon\CarbonPeriod::create($startDate, $endDate);
 
-        $shiftId = $request->id_shift;
-        $userIds = $request->user_ids;
+        $shiftId = $data['id_shift'];
+        $userIds = $data['user_ids'];
 
         $count = 0;
         $refundCount = 0;
@@ -364,38 +360,33 @@ class JadwalController extends Controller
         return response()->json(['success' => true, 'message' => 'Jadwal berhasil dihapus']);
     }
 
-    public function bulkDestroy(Request $request)
+    public function bulkDestroy(BulkDestroyJadwalRequest $request)
     {
-        $request->validate([
-            'tanggal_mulai' => 'required|date',
-            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-            'user_ids' => 'required|array',
-            'user_ids.*' => 'exists:users,id',
-        ]);
+        $data = $request->validated();
 
         $user = Auth::user();
         $isGlobalAdmin = $user->isGlobalAdmin();
 
         if (!$isGlobalAdmin) {
-            $invalidUsers = User::whereIn('id', $request->user_ids)
+            $invalidUsers = User::whereIn('id', $data['user_ids'])
                 ->where('id_kantor', '!=', $user->id_kantor)
                 ->exists();
 
             if ($invalidUsers) {
-                return redirect()->back()->with('error', 'Anda tidak diizinkan menghapus jadwal karyawan di luar kantor Anda.');
+                return redirect()->route('jadwal.index')->with('error', 'Anda tidak diizinkan menghapus jadwal karyawan di luar kantor Anda.');
             }
         }
 
         try {
-            DB::transaction(function () use ($request) {
-                JadwalKerja::whereIn('id_user', $request->user_ids)
-                    ->whereBetween('tanggal', [$request->tanggal_mulai, $request->tanggal_selesai])
+            DB::transaction(function () use ($data) {
+                JadwalKerja::whereIn('id_user', $data['user_ids'])
+                    ->whereBetween('tanggal', [$data['tanggal_mulai'], $data['tanggal_selesai']])
                     ->delete();
             });
 
-            return redirect()->back()->with('success', 'Jadwal kerja berhasil dihapus pada rentang tanggal tersebut.');
+            return redirect()->route('jadwal.index')->with('success', 'Jadwal kerja berhasil dihapus pada rentang tanggal tersebut.');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Terjadi kesalahan saat menghapus jadwal: ' . $e->getMessage());
+            return redirect()->route('jadwal.index')->with('error', 'Terjadi kesalahan saat menghapus jadwal: ' . $e->getMessage());
         }
     }
 

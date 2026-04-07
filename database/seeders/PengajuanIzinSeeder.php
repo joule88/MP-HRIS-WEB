@@ -27,7 +27,10 @@ class PengajuanIzinSeeder extends Seeder
                 $tglMulai = now()->addDays(rand(-10, 10));
                 $tglSelesai = (clone $tglMulai)->addDays(rand(1, 3));
 
+                $idIzin = 'IZN-' . date('ym') . '-' . strtoupper(Str::random(5));
+
                 DB::table('pengajuan_izin')->insertOrIgnore([
+                    'id_izin' => $idIzin,
                     'id_user' => $user->id,
                     'id_jenis_izin' => $idJenis,
                     'tanggal_mulai' => $tglMulai->format('Y-m-d'),

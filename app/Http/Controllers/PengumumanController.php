@@ -47,7 +47,7 @@ class PengumumanController extends Controller
             'pengumuman_baru',
             '📢 Pengumuman Baru',
             $pengumuman->judul,
-            ['id_pengumuman' => $pengumuman->id]
+            ['id_pengumuman' => $pengumuman->id_pengumuman]
         );
 
         return redirect()->route('pengumuman.index')
@@ -86,16 +86,20 @@ class PengumumanController extends Controller
 
     public function destroy(Pengumuman $pengumuman)
     {
-        if ($pengumuman->foto) {
-            Storage::disk('public')->delete($pengumuman->foto);
-        }
-        if ($pengumuman->lampiran) {
-            Storage::disk('public')->delete($pengumuman->lampiran);
-        }
+        try {
+            if ($pengumuman->foto) {
+                Storage::disk('public')->delete($pengumuman->foto);
+            }
+            if ($pengumuman->lampiran) {
+                Storage::disk('public')->delete($pengumuman->lampiran);
+            }
 
-        $pengumuman->delete();
+            $pengumuman->delete();
 
-        return redirect()->route('pengumuman.index')
-            ->with('success', 'Pengumuman berhasil dihapus.');
+            return redirect()->route('pengumuman.index')
+                ->with('success', 'Pengumuman berhasil dihapus.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal menghapus pengumuman: ' . $e->getMessage());
+        }
     }
 }

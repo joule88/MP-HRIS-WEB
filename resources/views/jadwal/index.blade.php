@@ -369,7 +369,7 @@
     </x-modal>
 
     <x-modal name="bulk-delete" title="Hapus Jadwal Massal">
-        <form action="{{ route('jadwal.bulk-delete') }}" method="POST"
+        <form action="{{ route('jadwal.bulk-delete') }}" method="POST" id="form-bulk-delete"
             x-data="{ 
                 tglMulai: '', 
                 tglSelesai: '',
@@ -441,7 +441,7 @@
 
             <div class="flex justify-end gap-3 pt-6 border-t border-slate-100 mt-6">
                 <x-button type="button" x-data @click="$dispatch('close-modal', 'bulk-delete')" variant="secondary">Batal</x-button>
-                <x-button type="submit" variant="danger">Ya, Hapus Terpilih</x-button>
+                <x-button type="button" variant="danger" onclick="confirmBulkDelete()">Ya, Hapus Terpilih</x-button>
             </div>
         </form>
     </x-modal>
@@ -469,7 +469,7 @@
             window.jadwalCalendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 locale: 'id',
-                initialDate: '2026-01-01',
+                initialDate: new Date().toISOString().split('T')[0],
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
@@ -983,40 +983,44 @@
                 }
             }
         });
-        selectAllCheckbox.addEventListener('change', function () {
-            const visibleCheckboxes = document.querySelectorAll('.user-checkbox');
-            visibleCheckboxes.forEach(cb => cb.checked = this.checked);
-        });
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const forms = document.querySelectorAll('form');
-            
-            forms.forEach(form => {
-                const inputMulai = form.querySelector('input[name="tanggal_mulai"]');
-                const inputSelesai = form.querySelector('input[name="tanggal_selesai"]');
-                
-                if (inputMulai && inputSelesai) {
-                    inputMulai.addEventListener('change', function() {
-                        if (this.value) {
-                            inputSelesai.min = this.value;
-                            if (inputSelesai.value && inputSelesai.value < this.value) {
-                                inputSelesai.value = this.value;
-                            }
-                        }
-                    });
-                    inputSelesai.addEventListener('change', function() {
-                        if (this.value) {
-                            inputMulai.max = this.value;
-                            if (inputMulai.value && inputMulai.value > this.value) {
-                                inputMulai.value = this.value;
-                            }
-                        }
-                    });
-                    if (inputMulai.value) inputSelesai.min = inputMulai.value;
-                    if (inputSelesai.value) inputMulai.max = inputSelesai.value;
+        function confirmBulkDelete() {
+            const form = document.getElementById('form-bulk-delete');
+            if (!form) return;
+
+            const checkedBoxes = form.querySelectorAll('.user-checkbox:checked');
+            const tglMulai = form.querySelector('input[name="tanggal_mulai"]')?.value;
+            const tglSelesai = form.querySelector('input[name="tanggal_selesai"]')?.value;
+
+            if (checkedBoxes.length === 0) {
+                Swal.fire('Peringatan', 'Pilih minimal 1 pegawai untuk dihapus jadwalnya.', 'warning');
+                return;
+            }
+            if (!tglMulai || !tglSelesai) {
+                Swal.fire('Peringatan', 'Tanggal mulai dan selesai wajib diisi.', 'warning');
+                return;
+            }
+
+            const formatTgl = (d) => {
+                const obj = new Date(d);
+                return obj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            };
+
+            Swal.fire({
+                title: 'Konfirmasi Hapus Massal',
+                html: `Anda akan menghapus jadwal <b>${checkedBoxes.length} pegawai</b> pada rentang:<br><b>${formatTgl(tglMulai)} — ${formatTgl(tglSelesai)}</b><br><br><span class="text-red-500 font-semibold">Tindakan ini tidak dapat dibatalkan!</span>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Ya, Hapus Sekarang',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
                 }
             });
-        });
+        }
 
     </script>
 @endsection

@@ -32,7 +32,7 @@
                             <x-input label="Email" name="email" type="email" value="{{ $pegawai->email }}" required />
                         </div>
                         <div class="w-full">
-                            <x-input label="Nomor Telepon" name="no_telp" value="{{ $pegawai->no_telp }}" />
+                            <x-input label="Nomor Telepon" name="no_telp" type="tel" value="{{ $pegawai->no_telp }}" placeholder="0812-XXXX-XXXX" />
                         </div>
                         <div class="w-full">
                             <x-input label="Sisa Cuti (Hari)" name="sisa_cuti" type="number" value="{{ $pegawai->sisa_cuti }}"
@@ -49,7 +49,7 @@
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 block">
                     <h3 class="text-lg font-bold text-slate-800 mb-4 block w-full">Penempatan & Status</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-                        <x-select label="Divisi" name="id_divisi" required>
+                        <x-select label="Divisi" name="id_divisi" class="!mb-0" required>
                             @foreach ($divisi as $d)
                                 <option value="{{ $d->id_divisi }}"
                                     {{ $pegawai->id_divisi == $d->id_divisi ? 'selected' : '' }}>
@@ -57,7 +57,7 @@
                             @endforeach
                         </x-select>
 
-                        <x-select label="Jabatan" name="id_jabatan" required>
+                        <x-select label="Jabatan" name="id_jabatan" class="!mb-0" required>
                             @foreach ($jabatan as $j)
                                 <option value="{{ $j->id_jabatan }}"
                                     {{ $pegawai->id_jabatan == $j->id_jabatan ? 'selected' : '' }}>{{ $j->nama_jabatan }}
@@ -65,7 +65,7 @@
                             @endforeach
                         </x-select>
 
-                        <x-select label="Lokasi Kantor" name="id_kantor" required>
+                        <x-select label="Lokasi Kantor" name="id_kantor" class="!mb-0" required>
                             @foreach ($kantor as $k)
                                 <option value="{{ $k->id_kantor }}"
                                     {{ $pegawai->id_kantor == $k->id_kantor ? 'selected' : '' }}>
@@ -73,12 +73,12 @@
                             @endforeach
                         </x-select>
 
-                        <x-select label="Status Pegawai" name="status_aktif" required>
+                        <x-select label="Status Pegawai" name="status_aktif" class="!mb-0" required>
                             <option value="1" {{ $pegawai->status_aktif == 1 ? 'selected' : '' }}>Aktif</option>
                             <option value="0" {{ $pegawai->status_aktif == 0 ? 'selected' : '' }}>Non-Aktif</option>
                         </x-select>
 
-                        <x-select label="Role Akses" name="id_role" required>
+                        <x-select label="Role Akses" name="id_role" class="!mb-0" required>
                             @foreach ($roles as $r)
                                 <option value="{{ $r->id_role }}"
                                     {{ $pegawai->roles->contains('id_role', $r->id_role) ? 'selected' : '' }}>

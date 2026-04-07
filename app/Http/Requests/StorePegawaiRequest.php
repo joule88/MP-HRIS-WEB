@@ -17,7 +17,8 @@ class StorePegawaiRequest extends FormRequest
             'nama_lengkap' => ['required', 'string', 'max:255'],
             'nik'          => ['nullable', 'string', 'max:50', 'unique:users,nik'],
             'email'        => ['required', 'email', 'unique:users,email'],
-            'no_telp' => ['nullable', 'string', 'max:20'],
+            'no_telp' =>
+                ['nullable', 'string', 'max:15', 'regex:/^(\+62|62|0)[0-9]{8,11}$/'],
             'alamat' => ['nullable', 'string'],
             'id_divisi' => ['required', 'exists:divisi,id_divisi'],
             'id_jabatan' => ['required', 'exists:jabatan,id_jabatan'],
@@ -32,10 +33,13 @@ class StorePegawaiRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'nik.unique' => 'NIK sudah terdaftar di sistem.',
-            'email.unique' => 'Email ini sudah digunakan oleh pegawai lain.',
+            'nik.unique'       => 'NIK sudah terdaftar di sistem.',
+            'email.unique'     => 'Email ini sudah digunakan oleh pegawai lain.',
             'id_divisi.exists' => 'Divisi yang dipilih tidak valid.',
-            'id_role.exists' => 'Role yang dipilih tidak valid.',
+            'id_role.exists'   => 'Role yang dipilih tidak valid.',
+            'no_telp.regex'    => 'Format nomor telepon tidak valid. Gunakan format: 08xx, +62xx, atau 62xx.',
+            'foto.max'         => 'Ukuran foto tidak boleh lebih dari 5MB.',
+            'sisa_cuti.min'    => 'Sisa cuti tidak boleh negatif.',
         ];
     }
 }

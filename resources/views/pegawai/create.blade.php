@@ -33,7 +33,7 @@
                                 required />
                         </div>
                         <div class="w-full">
-                            <x-input label="Nomor Telepon" name="no_telp" placeholder="0812..." />
+                            <x-input label="Nomor Telepon" name="no_telp" type="tel" placeholder="0812-XXXX-XXXX" />
                         </div>
                         <div class="w-full">
                             <x-input label="Sisa Cuti (Hari)" name="sisa_cuti" type="number" value="12"
@@ -51,7 +51,7 @@
                     <h3 class="text-lg font-bold text-slate-800 mb-4">Penempatan Kerja</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="w-full">
-                            <x-select label="Divisi" name="id_divisi" required>
+                            <x-select label="Divisi" name="id_divisi" class="!mb-0" required>
                                 <option value="">Pilih Divisi</option>
                                 @foreach ($divisi as $d)
                                     <option value="{{ $d->id_divisi }}">{{ $d->nama_divisi }}</option>
@@ -60,7 +60,7 @@
                         </div>
 
                         <div class="w-full">
-                            <x-select label="Jabatan" name="id_jabatan" required>
+                            <x-select label="Jabatan" name="id_jabatan" class="!mb-0" required>
                                 <option value="">Pilih Jabatan</option>
                                 @foreach ($jabatan as $j)
                                     <option value="{{ $j->id_jabatan }}">{{ $j->nama_jabatan }}</option>
@@ -69,7 +69,7 @@
                         </div>
 
                         <div class="w-full">
-                            <x-select label="Lokasi Kantor" name="id_kantor" required>
+                            <x-select label="Lokasi Kantor" name="id_kantor" class="!mb-0" required>
                                 <option value="">Pilih Kantor</option>
                                 @foreach ($kantor as $k)
                                     <option value="{{ $k->id_kantor }}">{{ $k->nama_kantor }}</option>
@@ -78,7 +78,7 @@
                         </div>
 
                         <div class="w-full">
-                            <x-select label="Role Akses" name="id_role" required>
+                            <x-select label="Role Akses" name="id_role" class="!mb-0" required>
                                 <option value="">Pilih Role Akses</option>
                                 @foreach ($roles as $r)
                                     <option value="{{ $r->id_role }}">{{ $r->nama_role }}</option>
@@ -86,7 +86,7 @@
                             </x-select>
                         </div>
 
-                        <div class="md:col-span-2 w-full mt-2">
+                        <div class="md:col-span-2 w-full">
                             <x-date-input label="Tanggal Bergabung" name="tgl_bergabung" required />
                         </div>
                     </div>

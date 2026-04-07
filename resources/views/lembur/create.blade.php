@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Input Lembur Manual')
 
@@ -32,7 +32,7 @@
                         <option value="">-- Pilih Kompensasi --</option>
                         @foreach($kompensasi as $k)
                             <option value="{{ $k->id_kompensasi }}" {{ old('id_kompensasi') == $k->id_kompensasi ? 'selected' : '' }}>
-                                {{ $k->nama_kompensasi }} ({{ $k->id_kompensasi == 2 ? 'Dapat Poin Cut' : 'Uang Lembur' }})
+                                {{ $k->nama_kompensasi }} ({{ $k->id_kompensasi == \App\Enums\JenisKompensasi::TAMBAHAN_POIN ? 'Dapat Poin Cuti' : 'Uang Lembur' }})
                             </option>
                         @endforeach
                     </x-select>

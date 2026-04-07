@@ -48,12 +48,6 @@ class PoinService
 
             $remainingNeeded -= $take;
         }
-
-        $penggunaan = PenggunaanPoin::find($idPenggunaan);
-        if ($penggunaan) {
-            $penggunaan->id_status = StatusPengajuan::DISETUJUI;
-            $penggunaan->save();
-        }
     }
 
     public function refundPoin($idPenggunaan)
@@ -70,14 +64,9 @@ class PoinService
                 }
                 $poinSumber->save();
             }
-            $detail->delete();
         }
 
-        $penggunaan = PenggunaanPoin::find($idPenggunaan);
-        if ($penggunaan) {
-            $penggunaan->id_status = StatusPengajuan::DITOLAK;
-            $penggunaan->save();
-        }
+        DetailPenggunaanPoin::where('id_penggunaan', $idPenggunaan)->delete();
     }
 
     public function getActivePoints($userId)

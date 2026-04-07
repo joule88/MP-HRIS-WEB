@@ -1,11 +1,13 @@
 @extends('layouts.app')
 
+@section('title', 'Buat Pengumuman')
+
 @section('content')
 
     <div class="max-w-2xl mx-auto">
         <x-page-header title="Buat Pengumuman Baru" subtitle="Isi form berikut untuk membuat pengumuman" />
 
-        <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div class="mt-6 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <form action="{{ route('pengumuman.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="space-y-5">

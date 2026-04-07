@@ -31,9 +31,9 @@
                 <x-filter-select name="status"
                     onchange="window.location.href='{{ route('izin.index') }}?status=' + this.value + '&search={{ request('search') }}'">
                     <option value="">Semua Status</option>
-                    <option value="1" {{ $statusId == 1 ? 'selected' : '' }}>Pending</option>
-                    <option value="2" {{ $statusId == 2 ? 'selected' : '' }}>Disetujui</option>
-                    <option value="3" {{ $statusId == 3 ? 'selected' : '' }}>Ditolak</option>
+                    <option value="{{ \App\Enums\StatusPengajuan::PENDING }}" {{ $statusId == \App\Enums\StatusPengajuan::PENDING ? 'selected' : '' }}>Pending</option>
+                    <option value="{{ \App\Enums\StatusPengajuan::DISETUJUI }}" {{ $statusId == \App\Enums\StatusPengajuan::DISETUJUI ? 'selected' : '' }}>Disetujui</option>
+                    <option value="{{ \App\Enums\StatusPengajuan::DITOLAK }}" {{ $statusId == \App\Enums\StatusPengajuan::DITOLAK ? 'selected' : '' }}>Ditolak</option>
                 </x-filter-select>
             </div>
         </x-page-header>
@@ -66,7 +66,7 @@
                             
                             <span
                                 class="px-2.5 py-1 rounded-full text-xs font-medium 
-                                                                                        {{ $item->id_jenis_izin == 1 ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600' }}">
+                                                                                        {{ $item->id_jenis_izin == \App\Enums\JenisIzin::SAKIT ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600' }}">
                                 {{ $item->jenisIzin->nama_izin ?? 'Unknown' }}
                             </span>
                         </td>
@@ -81,12 +81,12 @@
                             @php
                                 $statusName = $item->statusPengajuan->nama_status ?? '-';
                                 $badgeColor = match ($item->id_status) {
-                                    2 => 'green',
-                                    3 => 'red',
+                                    \App\Enums\StatusPengajuan::DISETUJUI => 'green',
+                                    \App\Enums\StatusPengajuan::DITOLAK  => 'red',
                                     default => 'yellow'
                                 };
                             @endphp
-                            @if($item->id_jenis_izin == 2 && $item->id_status == 1)
+                            @if($item->id_jenis_izin == \App\Enums\JenisIzin::CUTI && $item->id_status == \App\Enums\StatusPengajuan::PENDING)
                                 <x-badge color="blue">Via Surat Izin</x-badge>
                             @else
                                 <x-badge color="{{ $badgeColor }}">{{ $statusName }}</x-badge>
@@ -94,12 +94,23 @@
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-2">
-                                <button data-item="{{ $item->makeHidden('suratIzin')->toJson() }}"
+                                <button data-item="{{ json_encode([
+                                        'id_izin'           => $item->id_izin,
+                                        'id_status'         => $item->id_status,
+                                        'id_jenis_izin'     => $item->id_jenis_izin,
+                                        'tanggal_mulai'     => $item->tanggal_mulai,
+                                        'tanggal_selesai'   => $item->tanggal_selesai,
+                                        'alasan'            => $item->alasan,
+                                        'alasan_penolakan'  => $item->alasan_penolakan,
+                                        'bukti_file'        => $item->bukti_file,
+                                        'user'              => ['nama_lengkap' => $item->user?->nama_lengkap, 'nik' => $item->user?->nik],
+                                        'jenis_izin'        => ['nama_izin' => $item->jenisIzin?->nama_izin],
+                                    ]) }}"
                                     onclick="openDetailModal(JSON.parse(this.getAttribute('data-item')))"
                                     class="px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition shadow-sm">
                                     Detail
                                 </button>
-                                @if($item->id_jenis_izin == 2 && $item->suratIzin)
+                                @if($item->id_jenis_izin == \App\Enums\JenisIzin::CUTI && $item->suratIzin)
                                     <a href="{{ route('surat-izin.show', $item->suratIzin->id_surat) }}"
                                         class="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition shadow-sm">
                                         Lihat Surat →
@@ -150,7 +161,7 @@
 
             <div>
                 <x-select label="Jenis Izin" name="id_jenis_izin" required>
-                    @foreach($jenisIzin as $j)
+                    @foreach($jenisIzinList as $j)
                         <option value="{{ $j->id_jenis_izin }}">{{ $j->nama_izin }}</option>
                     @endforeach
                 </x-select>
@@ -165,7 +176,7 @@
                 <x-textarea label="Alasan" name="alasan" required rows="3" />
             </div>
 
-            <x-input type="file" label="Bukti Dokumen (Gambar/PDF)" name="bukti_file" required
+            <x-input type="file" label="Bukti Dokumen (Gambar/PDF)" name="bukti_file"
                 accept=".jpeg,.png,.jpg,.pdf" />
 
             <div class="pt-4 flex justify-end gap-3">
@@ -203,6 +214,11 @@
                 </p>
             </div>
 
+            <div id="alasan-penolakan-wrapper" class="hidden">
+                <label class="block text-xs font-bold text-red-500 uppercase tracking-wider mb-1">Alasan Penolakan</label>
+                <p class="text-sm text-red-700 bg-red-50 p-3 rounded-lg border border-red-100" id="detail-alasan-penolakan">-</p>
+            </div>
+
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Bukti Dokumen</label>
                 <div
@@ -234,12 +250,13 @@
                     @click="$dispatch('close-modal', 'detail-izin')">Tutup</x-button>
 
                 @auth
-                    
-                    <form id="form-reject-izin" action="" method="POST" class="hidden">@csrf</form>
+                    <form id="form-reject-izin" action="" method="POST" class="hidden">
+                        @csrf
+                        <input type="hidden" name="alasan_penolakan" id="input-alasan-penolakan">
+                    </form>
                     <form id="form-approve-izin" action="" method="POST" class="hidden">@csrf</form>
 
-                    <x-button id="btn-reject" variant="danger"
-                        onclick="confirmAction(event, 'form-reject-izin', 'Status akan diubah menjadi Ditolak.', '#ef4444', 'Tolak')">
+                    <x-button id="btn-reject" variant="danger" onclick="submitRejectWithAlasan()">
                         Tolak
                     </x-button>
                     <x-button id="btn-approve" variant="primary"
@@ -258,6 +275,10 @@
 
 @section('script')
     <script>
+        const JENIS_CUTI     = {{ \App\Enums\JenisIzin::CUTI }};
+        const STATUS_PENDING  = {{ \App\Enums\StatusPengajuan::PENDING }};
+        const STATUS_DITOLAK  = {{ \App\Enums\StatusPengajuan::DITOLAK }};
+
         function openDetailModal(data) {
             document.getElementById('current-id-izin').value = data.id_izin;
             document.getElementById('detail-nama').innerText = data.user.nama_lengkap;
@@ -281,19 +302,15 @@
             noBukti.classList.add('hidden');
 
             if (data.bukti_file) {
-                const url = "{{ asset('storage') }}/" + data.bukti_file;
+                const fileUrl = "{{ asset('storage') }}/" + data.bukti_file;
                 const isImage = data.bukti_file.match(/\.(jpeg|jpg|png|gif)$/i) || data.bukti_file.includes('placehold.co');
 
                 if (isImage) {
-                    img.src = url;
+                    img.src = data.bukti_file.startsWith('http') ? data.bukti_file : fileUrl;
                     img.classList.remove('hidden');
                 } else {
-                    link.href = url;
+                    link.href = fileUrl;
                     link.classList.remove('hidden');
-                }
-
-                if (data.bukti_file.startsWith('http')) {
-                    img.src = data.bukti_file;
                 }
             } else {
                 noBukti.classList.remove('hidden');
@@ -302,13 +319,20 @@
             const btnApprove = document.getElementById('btn-approve');
             const btnReject = document.getElementById('btn-reject');
             const cutiInfo = document.getElementById('cuti-info-banner');
+            const alasanPenolakanWrapper = document.getElementById('alasan-penolakan-wrapper');
             
             if (btnApprove) btnApprove.classList.add('hidden');
             if (btnReject) btnReject.classList.add('hidden');
             if (cutiInfo) cutiInfo.classList.add('hidden');
+            if (alasanPenolakanWrapper) alasanPenolakanWrapper.classList.add('hidden');
 
-            if (data.id_status == 1) {
-                if (data.id_jenis_izin == 2) {
+            if (data.id_status == STATUS_DITOLAK && data.alasan_penolakan) {
+                document.getElementById('detail-alasan-penolakan').innerText = data.alasan_penolakan;
+                if (alasanPenolakanWrapper) alasanPenolakanWrapper.classList.remove('hidden');
+            }
+
+            if (data.id_status == STATUS_PENDING) {
+                if (data.id_jenis_izin == JENIS_CUTI) {
                     if (cutiInfo) cutiInfo.classList.remove('hidden');
                 } else {
                     if (btnApprove) btnApprove.classList.remove('hidden');
@@ -317,6 +341,15 @@
             }
 
             window.dispatchEvent(new CustomEvent('open-modal', { detail: 'detail-izin' }));
+        }
+
+        function submitRejectWithAlasan() {
+            const alasan = prompt('Masukkan alasan penolakan (opsional):');
+            if (alasan === null) return;
+            const inputAlasan = document.getElementById('input-alasan-penolakan');
+            if (inputAlasan) inputAlasan.value = alasan;
+            const form = document.getElementById('form-reject-izin');
+            if (form) form.submit();
         }
 
         function initCreateIzinForm() {

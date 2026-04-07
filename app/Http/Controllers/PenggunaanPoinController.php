@@ -7,6 +7,7 @@ use App\Models\PenggunaanPoin;
 use App\Services\PoinService;
 use App\Services\NotifikasiService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class PenggunaanPoinController extends Controller
@@ -20,10 +21,10 @@ class PenggunaanPoinController extends Controller
 
     public function index()
     {
-        $user = \Illuminate\Support\Facades\Auth::user();
+        $user = Auth::user();
         $isGlobalAdmin = $user->isGlobalAdmin();
 
-        $query = PenggunaanPoin::with(['user', 'jenisPengurangan', 'status']);
+        $query = PenggunaanPoin::with(['user.divisi', 'jenisPengurangan', 'status']);
 
         if (!$isGlobalAdmin) {
             $query->whereHas('user', function ($q) use ($user) {
@@ -48,7 +49,7 @@ class PenggunaanPoinController extends Controller
         $penggunaan = PenggunaanPoin::findOrFail($id);
 
         $penggunaan->load('user');
-        $userAuth = \Illuminate\Support\Facades\Auth::user();
+        $userAuth = Auth::user();
         if (!$userAuth->isGlobalAdmin() && $penggunaan->user->id_kantor != $userAuth->id_kantor) {
             return redirect()->back()->with('error', 'Anda tidak diizinkan memproses data dari kantor lain.');
         }
@@ -83,7 +84,7 @@ class PenggunaanPoinController extends Controller
                     $penggunaan->id_user,
                     'poin_disetujui',
                     'Penggunaan Poin Disetujui',
-                    'Pengajuan penggunaan poin Anda pada tanggal ' . $penggunaan->tanggal_penggunaan . ' telah disetujui.',
+                    'Pengajuan penggunaan poin Anda pada tanggal ' . ($penggunaan->tanggal_penggunaan ? $penggunaan->tanggal_penggunaan->translatedFormat('d F Y') : '-') . ' telah disetujui.',
                     ['id_penggunaan' => $penggunaan->id_penggunaan]
                 );
 
@@ -103,7 +104,7 @@ class PenggunaanPoinController extends Controller
                     $penggunaan->id_user,
                     'poin_ditolak',
                     'Penggunaan Poin Ditolak',
-                    'Pengajuan penggunaan poin Anda pada tanggal ' . $penggunaan->tanggal_penggunaan . ' ditolak.',
+                    'Pengajuan penggunaan poin Anda pada tanggal ' . ($penggunaan->tanggal_penggunaan ? $penggunaan->tanggal_penggunaan->translatedFormat('d F Y') : '-') . ' ditolak. Alasan: ' . ($request->alasan_penolakan ?? '-'),
                     ['id_penggunaan' => $penggunaan->id_penggunaan]
                 );
 

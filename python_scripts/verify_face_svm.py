@@ -199,7 +199,7 @@ def verify_face(model_dir, user_id, image_path):
             "expected_user": expected_user,
             "unknown_confidence": round(unknown_confidence, 4),
             "blur_score": round(blur_score, 1),
-            "user_id": int(user_id)
+            "user_id": int(user_id) if str(user_id).isdigit() else user_id
         }
 
         print(json.dumps(result))

@@ -45,7 +45,7 @@
                         {{ $item->durasi_menit }} Menit
                     </td>
                     <td class="px-6 py-4">
-                        @if($item->id_kompensasi == 2)
+                        @if($item->id_kompensasi == \App\Enums\JenisKompensasi::TAMBAHAN_POIN)
                             <x-badge color="purple">⭐ Poin</x-badge>
                         @else
                             <x-badge color="green">💵 Uang</x-badge>
@@ -56,12 +56,11 @@
                     </td>
                     <td class="px-6 py-4">
                         @php
-                            $status = strtolower($item->status->nama_status ?? '-');
                             $idStatus = $item->id_status;
                             $badgeColor = match ($idStatus) {
-                                1 => 'yellow',
-                                2 => 'green',
-                                3 => 'red',
+                                \App\Enums\StatusPengajuan::PENDING   => 'yellow',
+                                \App\Enums\StatusPengajuan::DISETUJUI => 'green',
+                                \App\Enums\StatusPengajuan::DITOLAK   => 'red',
                                 default => 'gray'
                             };
                         @endphp
@@ -70,9 +69,9 @@
                         </x-badge>
                     </td>
                     <td class="px-6 py-4 text-right">
-                        @if($item->id_status == 1) 
+                        @if($item->id_status == \App\Enums\StatusPengajuan::PENDING)
                             <div class="flex justify-end gap-2">
-                                
+
                                 <form action="{{ route('lembur.update', $item->id_lembur) }}" method="POST">
                                     @csrf
                                     @method('PUT')

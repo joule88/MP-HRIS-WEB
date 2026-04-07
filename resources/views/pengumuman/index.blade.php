@@ -23,13 +23,13 @@
                 <th class="px-6 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Aksi</th>
             </x-slot:header>
             @forelse ($pengumuman as $item)
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                         {{ $loop->iteration + ($pengumuman->currentPage() - 1) * $pengumuman->perPage() }}
                     </td>
                     <td class="px-6 py-4">
-                        <div class="text-sm font-medium text-gray-900">{{ $item->judul }}</div>
-                        <div class="text-sm text-gray-500 truncate max-w-xs">{{ Str::limit($item->isi, 50) }}</div>
+                        <div class="text-sm font-medium text-slate-900">{{ $item->judul }}</div>
+                        <div class="text-sm text-slate-500 truncate max-w-xs">{{ Str::limit($item->isi, 50) }}</div>
                         @if($item->foto || $item->lampiran)
                             <div class="flex gap-2 mt-1">
                                 @if($item->foto)
@@ -47,10 +47,10 @@
                             </div>
                         @endif
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ $item->tanggal->format('d M Y') }}
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                        {{ $item->tanggal ? $item->tanggal->translatedFormat('d M Y') : '-' }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                         {{ $item->pembuat->nama_lengkap ?? 'System' }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

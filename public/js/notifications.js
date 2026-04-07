@@ -76,13 +76,17 @@
     // ==== Polling Badge Notifikasi ====
     function updateNotifBadge() {
         const badge = document.getElementById('notif-badge');
-        if (!badge) return;
+        if (!badge) return; // User tidak punya akses notifikasi, hentikan tanpa fetch
 
         fetch('/notifikasi/unread-count', {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
         })
-        .then(r => r.json())
+        .then(r => {
+            if (!r.ok) return null; // Tangani 403/redirect dengan aman
+            return r.json();
+        })
         .then(data => {
+            if (!data) return;
             const count = data.count ?? 0;
             if (count > 0) {
                 badge.textContent = count > 99 ? '99+' : count;
@@ -215,7 +219,7 @@ function confirmDelete(id) {
             }
         }
     });
-    }
+}
 
 function confirmAction(event, formId, message, confirmBtnColor = '#3085d6', confirmBtnText = 'Ya, lanjutkan!') {
     event.preventDefault();

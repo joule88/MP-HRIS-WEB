@@ -1,6 +1,24 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Data Jabatan')
+
+@section('script')
+    <script>
+        window.openEditModal = function (btn) {
+            const id = btn.dataset.id;
+            const nama = btn.dataset.nama;
+
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-nama').value = nama;
+
+            let form = document.getElementById('form-edit');
+            let baseUrl = "{{ route('jabatan.update', ':id') }}";
+            form.action = baseUrl.replace(':id', id);
+
+            window.dispatchEvent(new CustomEvent('open-modal', { detail: 'edit-jabatan' }));
+        }
+    </script>
+@endsection
 
 @section('content')
     <div class="space-y-6">
@@ -80,11 +98,7 @@
 
             <input type="hidden" id="edit-id" name="id">
 
-            <div>
-                <label class="block text-sm font-semibold text-slate-700 mb-1">Nama Jabatan</label>
-                <input type="text" id="edit-nama" name="nama_jabatan" required
-                    class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#130F26] outline-none transition">
-            </div>
+            <x-input label="Nama Jabatan" name="nama_jabatan" id="edit-nama" required />
 
             <div class="flex justify-end gap-3 pt-4">
                 <button type="button" x-data @click="$dispatch('close-modal', 'edit-jabatan')"
@@ -95,20 +109,6 @@
         </form>
     </x-modal>
 
-    <script>
-        window.openEditModal = function (btn) {
-            const id = btn.dataset.id;
-            const nama = btn.dataset.nama;
 
-            document.getElementById('edit-id').value = id;
-            document.getElementById('edit-nama').value = nama;
-
-            let form = document.getElementById('form-edit');
-            let baseUrl = "{{ route('jabatan.update', ':id') }}";
-            form.action = baseUrl.replace(':id', id);
-
-            window.dispatchEvent(new CustomEvent('open-modal', { detail: 'edit-jabatan' }));
-        }
-    </script>
 
 @endsection

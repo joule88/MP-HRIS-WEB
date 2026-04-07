@@ -20,11 +20,12 @@ class StorePengajuanIzinRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tanggal_mulai' => 'required|date|after_or_equal:today',
-            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-            'id_jenis_izin' => 'required|exists:jenis_izin,id_jenis_izin',
-            'alasan' => 'required|string|max:150',
-            'bukti_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'id_user'        => 'required|exists:users,id',
+            'id_jenis_izin'  => 'required|exists:jenis_izin,id_jenis_izin',
+            'tanggal_mulai'  => 'required|date',
+            'tanggal_selesai'=> 'required|date|after_or_equal:tanggal_mulai',
+            'alasan'         => 'required|string|max:500',
+            'bukti_file'     => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
         ];
     }
 
@@ -36,10 +37,12 @@ class StorePengajuanIzinRequest extends FormRequest
     public function attributes()
     {
         return [
-            'tanggal_mulai' => 'tanggal mulai',
+            'id_user'         => 'pegawai',
+            'id_jenis_izin'   => 'jenis izin',
+            'tanggal_mulai'   => 'tanggal mulai',
             'tanggal_selesai' => 'tanggal selesai',
-            'id_jenis_izin' => 'jenis izin',
-            'bukti_file' => 'bukti file',
+            'alasan'          => 'alasan',
+            'bukti_file'      => 'bukti file',
         ];
     }
 

@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Detail Surat Izin')
 
@@ -191,29 +191,25 @@
         </div>
         @endif
     </div>
+@endsection
 
-    @section('style')
-    <style>
-        @media print {
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            /* Sembunyikan elemen layout umum (sidebar & header) */
-            aside, header { 
-                display: none !important; 
-            }
-            
-            /* Reset constraint agar browser dapat memproses multi-halaman jika suratnya panjang */
-            body, html, #main-scroll-container, main, .h-screen, .overflow-hidden, .overflow-y-auto {
-                height: auto !important;
-                min-height: auto !important;
-                overflow: visible !important;
-                background-color: transparent !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                position: static !important;
-            }
-
-            @page { margin: 1.5cm; }
+@section('style')
+<style>
+    @media print {
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        aside, header {
+            display: none !important;
         }
-    </style>
-    @endsection
+        body, html, #main-scroll-container, main, .h-screen, .overflow-hidden, .overflow-y-auto {
+            height: auto !important;
+            min-height: auto !important;
+            overflow: visible !important;
+            background-color: transparent !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            position: static !important;
+        }
+        @page { margin: 1.5cm; }
+    }
+</style>
 @endsection

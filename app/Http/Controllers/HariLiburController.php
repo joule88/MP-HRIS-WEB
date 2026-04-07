@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\HariLibur;
+use App\Http\Requests\StoreHariLiburRequest;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -27,15 +28,9 @@ class HariLiburController extends Controller
         return view('hari_libur.index', compact('hariLiburs', 'kantors'));
     }
 
-    public function store(Request $request)
+    public function store(StoreHariLiburRequest $request)
     {
-        $request->validate([
-            'tanggal' => 'required|date',
-            'keterangan' => 'required|string|max:255',
-            'id_kantor' => 'nullable|exists:kantor,id_kantor',
-        ]);
-
-        HariLibur::create($request->all());
+        HariLibur::create($request->validated());
 
         return redirect()->route('hari-libur.index')
             ->with('success', 'Hari libur berhasil ditambahkan.');
@@ -44,13 +39,13 @@ class HariLiburController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'tanggal' => 'required|date',
-            'keterangan' => 'required|string|max:255',
-            'id_kantor' => 'nullable|exists:kantor,id_kantor',
+            'tanggal'     => 'required|date',
+            'keterangan'  => 'required|string|max:255',
+            'id_kantor'   => 'nullable|exists:kantor,id_kantor',
         ]);
 
-        $hariLibur = HariLibur::where('id', '=', $id)->first() ?? HariLibur::where('id_hari_libur', '=', $id)->firstOrFail();
-        $hariLibur->update($request->all());
+        $hariLibur = HariLibur::findOrFail($id);
+        $hariLibur->update($request->only(['tanggal', 'keterangan', 'id_kantor']));
 
         return redirect()->route('hari-libur.index')
             ->with('success', 'Hari libur berhasil diperbarui.');
@@ -58,8 +53,7 @@ class HariLiburController extends Controller
 
     public function destroy($id)
     {
-        $hariLibur = HariLibur::where('id', '=', $id)->first() ?? HariLibur::where('id_hari_libur', '=', $id)->firstOrFail();
-        $hariLibur->delete();
+        HariLibur::findOrFail($id)->delete();
 
         return redirect()->route('hari-libur.index')
             ->with('success', 'Hari libur berhasil dihapus.');

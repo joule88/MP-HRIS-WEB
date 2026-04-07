@@ -138,10 +138,11 @@
     function openEditModal(id, nama, sisa) {
         document.getElementById('editNama').value = nama;
         document.getElementById('editSisa').value = sisa;
-        
+
         let form = document.getElementById('formEditCuti');
-        form.action = `/cuti/${id}`;
-        
+        let baseUrl = "{{ route('cuti.update', ':id') }}";
+        form.action = baseUrl.replace(':id', id);
+
         window.dispatchEvent(new CustomEvent('open-modal', { detail: 'edit-cuti' }));
     }
 </script>

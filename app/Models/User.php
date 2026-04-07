@@ -156,4 +156,11 @@ class User extends Authenticatable
     {
         return $this->hasMany(Notifikasi::class, 'id_user', 'id');
     }
+
+    public function scopeBukanHrd($query)
+    {
+        return $query->whereDoesntHave('roles', function ($q) {
+            $q->where('nama_role', 'hrd');
+        });
+    }
 }

@@ -99,23 +99,24 @@ class FaceEnrollmentController extends Controller
             'tipe' => 'nullable|string|in:presensi,test',
         ]);
 
+        $tipe = $request->input('tipe', 'presensi');
+
         try {
             set_time_limit(0);
 
             $user = $request->user();
-            $tipe = $request->input('tipe', 'presensi');
 
             $file = $request->file('foto');
             $result = $this->faceService->verifyFace($user->id, $file);
 
             \DB::table('log_verifikasi_wajah')->insert([
                 'id_user' => $user->id,
-                'confidence' => $result['confidence'] ?? null,
-                'svm_confidence' => $result['svm_confidence'] ?? null,
-                'normalized_distance' => $result['normalized_distance'] ?? null,
-                'verification_status' => $result['verification_status'] ?? null,
-                'is_match' => $result['verified'] ?? false,
-                'blur_score' => $result['blur_score'] ?? null,
+                'skor_kepercayaan' => $result['confidence'] ?? null,
+                'skor_svm' => $result['svm_confidence'] ?? null,
+                'jarak_normalisasi' => $result['normalized_distance'] ?? null,
+                'status_verifikasi' => $result['verification_status'] ?? null,
+                'apakah_cocok' => $result['verified'] ?? false,
+                'skor_blur' => $result['blur_score'] ?? null,
                 'tipe' => $tipe,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -131,9 +132,9 @@ class FaceEnrollmentController extends Controller
             if (isset($user)) {
                 \DB::table('log_verifikasi_wajah')->insert([
                     'id_user' => $user->id,
-                    'confidence' => 0,
-                    'verification_status' => 'ERROR',
-                    'is_match' => false,
+                    'skor_kepercayaan' => 0,
+                    'status_verifikasi' => 'ERROR',
+                    'apakah_cocok' => false,
                     'tipe' => $tipe ?? 'presensi',
                     'created_at' => now(),
                     'updated_at' => now(),

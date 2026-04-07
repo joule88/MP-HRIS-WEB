@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@php use App\Enums\StatusValidasi; @endphp
+
 @section('title', 'Monitoring Presensi')
 
 @section('style')
@@ -24,7 +26,7 @@
 
         <x-page-header title="Monitoring Presensi" subtitle="Pantau kehadiran pegawai harian.">
                 <div class="flex gap-2">
-                    @if(Auth::user()->roles->contains(fn($role) => strtolower($role->nama_role) === 'hrd'))
+                    @if(Auth::user()->isGlobalAdmin())
                     <a href="{{ route('presensi.create') }}" class="inline-flex items-center justify-center px-4 py-2 border border-transparent font-medium rounded-lg text-white bg-slate-800 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 transition-colors shadow-sm text-sm h-[42px]">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -106,9 +108,9 @@
                 </x-slot:header>
 
                 @forelse($presensi as $p)
-                    <tr class="hover:bg-slate-50 border-b border-slate-50 last:border-b-0 {{ $p->id_validasi == 2 ? 'bg-amber-50/50' : '' }}">
+                    <tr class="hover:bg-slate-50 border-b border-slate-50 last:border-b-0 {{ $p->id_validasi == StatusValidasi::PENDING ? 'bg-amber-50/50' : '' }}">
                         <td class="px-6 py-4">
-                            @if($p->id_validasi == 2)
+                            @if($p->id_validasi == StatusValidasi::PENDING)
                                 <x-checkbox name="presensi_ids[]" value="{{ $p->id_presensi }}" class="presensi-checkbox" />
                             @endif
                         </td>
@@ -203,7 +205,7 @@
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-2">
-                                @if ($p->id_validasi == 2)
+                                @if ($p->id_validasi == StatusValidasi::PENDING)
                                     <button type="button" onclick="inlineApprove({{ $p->id_presensi }})" class="p-1.5 text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-100" title="Setujui">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                     </button>
@@ -212,7 +214,7 @@
                                     </button>
                                 @endif
 
-                                @if(Auth::user()->roles->contains(fn($role) => strtolower($role->nama_role) === 'hrd'))
+                                @if(Auth::user()->isGlobalAdmin())
                                 <a href="{{ route('presensi.edit', $p->id_presensi) }}" class="p-1.5 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100" title="Koreksi Jam/Status">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                 </a>

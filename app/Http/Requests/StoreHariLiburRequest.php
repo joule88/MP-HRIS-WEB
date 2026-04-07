@@ -9,18 +9,15 @@ class StoreHariLiburRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-
+            'tanggal'    => ['required', 'date'],
+            'keterangan' => ['required', 'string', 'max:255'],
+            'id_kantor'  => ['nullable', 'exists:kantor,id_kantor'],
         ];
     }
 }

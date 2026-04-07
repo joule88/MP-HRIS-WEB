@@ -14,6 +14,7 @@ use App\Http\Requests\StorePresensiRequest;
 use App\Http\Requests\StoreManualPresensiRequest;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -228,6 +229,7 @@ class PresensiController extends Controller
         $isGlobalAdmin = $user->isGlobalAdmin();
 
         $pegawaiQuery = \App\Models\User::with('divisi')
+            ->bukanHrd()
             ->orderBy('nama_lengkap', 'asc');
 
         if (!$isGlobalAdmin) {
@@ -312,7 +314,7 @@ class PresensiController extends Controller
             'alasan_telat' => 'required|string|max:255'
         ], [
             'alasan_telat.required' => 'Catatan koreksi wajib diisi sebagai dokumentasi log.',
-            'jam_masuk.required' => 'Jam masuk wajib diisi untuk kehadiran Hadir/Terlambat.'
+            'jam_masuk.required'    => 'Jam masuk wajib diisi untuk kehadiran Hadir/Terlambat.'
         ]);
 
         $presensi = Presensi::findOrFail($id);
@@ -425,7 +427,7 @@ class PresensiController extends Controller
         $faceMessage = null;
 
         try {
-            $faceService = new \App\Services\FaceRecognitionService();
+            $faceService = app(\App\Services\FaceRecognitionService::class);
             $result = $faceService->verifyFace($user->id, $fotoFile);
 
             if (isset($result['verified']) && $result['verified'] === true) {
@@ -434,6 +436,10 @@ class PresensiController extends Controller
 
             $faceMessage = $result['message'] ?? null;
         } catch (\Exception $e) {
+            Log::warning('Verifikasi wajah masuk gagal', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
         }
 
         $fotoFile->storeAs('uploads/absensi', $imageName, 'public');
@@ -486,12 +492,16 @@ class PresensiController extends Controller
 
         $verifikasiPulang = 0;
         try {
-            $faceService = new \App\Services\FaceRecognitionService();
+            $faceService = app(\App\Services\FaceRecognitionService::class);
             $result = $faceService->verifyFace($user->id, $fotoFile);
             if (isset($result['verified']) && $result['verified'] === true) {
                 $verifikasiPulang = 1;
             }
         } catch (\Exception $e) {
+            Log::warning('Verifikasi wajah pulang gagal', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
         }
 
         $fotoFile->storeAs('uploads/absensi', $imageName, 'public');

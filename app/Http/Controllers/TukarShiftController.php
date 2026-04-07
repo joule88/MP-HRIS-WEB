@@ -18,18 +18,26 @@ class TukarShiftController extends Controller
 
     public function index()
     {
-        $riwayat = RiwayatTukarShift::with(['user1', 'user2', 'jadwal1.shift', 'jadwal2.shift', 'execAdmin'])
-            ->latest()
-            ->get();
+        $user = Auth::user();
+
+        $query = RiwayatTukarShift::with(['user1', 'user2', 'jadwal1.shift', 'jadwal2.shift', 'execAdmin'])
+            ->latest();
+
+        if (!$user->isGlobalAdmin()) {
+            $query->where(function ($q) use ($user) {
+                $q->whereHas('user1', fn($u) => $u->where('id_kantor', $user->id_kantor))
+                  ->orWhereHas('user2', fn($u) => $u->where('id_kantor', $user->id_kantor));
+            });
+        }
+
+        $riwayat = $query->get();
 
         return view('tukar-shift.index', compact('riwayat'));
     }
 
     public function create()
     {
-        $pegawai = User::with('kantor')->whereDoesntHave('roles', function ($q) {
-            $q->where('nama_role', 'hrd');
-        })->get();
+        $pegawai = User::with('kantor')->bukanHrd()->get();
 
         $kantor = \App\Models\Kantor::orderBy('nama_kantor', 'asc')->get();
 

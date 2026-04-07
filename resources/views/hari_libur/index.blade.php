@@ -1,15 +1,154 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Data Hari Libur')
 
 @section('style')
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
     <style>
-        .fc-toolbar-title { font-size: 1.15rem !important; font-weight: 700; color: #1e293b; }
-        .fc-col-header-cell { background-color: #f8fafc; padding: 8px 0; border-color: #e2e8f0; }
-        .fc-daygrid-day-number { color: #64748b; font-weight: 500; font-size: 0.85rem; }
-        .fc-day-today { background-color: #f0f9ff !important; }
-        .fc-event { border: none; padding: 2px; }
+        .fc-event {
+            cursor: default;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            background: transparent;
+        }
+        .fc-daygrid-event {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .fc-toolbar-title {
+            font-size: 1.25rem !important;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        .fc-col-header-cell {
+            background-color: #f8fafc;
+            padding: 12px 0;
+            border-color: #e2e8f0;
+        }
+        .fc-daygrid-day-number {
+            color: #64748b;
+            font-weight: 500;
+        }
+        .fc-day-today {
+            background-color: #ffffff !important;
+        }
+        .fc-event-title {
+            font-weight: 600;
+            line-height: 1.2;
+        }
+        .fc-popover-body {
+            max-height: 250px !important;
+            overflow-y: auto !important;
+        }
+        #holiday-calendar {
+            min-height: 550px;
+            font-family: inherit;
+        }
+        .fc-theme-standard td, .fc-theme-standard th, .fc-theme-standard .fc-scrollgrid {
+            border-color: #f1f5f9;
+        }
+        .fc-theme-standard .fc-scrollgrid { border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
+        .fc-col-header-cell {
+            background-color: #f8fafc;
+            padding: 12px 0 !important;
+        }
+        .fc-col-header-cell-cushion {
+            color: #64748b;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-decoration: none !important;
+        }
+        .fc-daygrid-day-top {
+            justify-content: center !important;
+            padding-top: 8px;
+            padding-bottom: 4px;
+        }
+        .fc-daygrid-day-number {
+            color: #475569;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-decoration: none !important;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            transition: all 0.2s;
+        }
+        .fc-daygrid-day-number:hover {
+            background-color: #f1f5f9;
+        }
+        .fc-day-today .fc-daygrid-day-number {
+            color: #ffffff !important;
+            background-color: #3b82f6 !important;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+        }
+        .fc-daygrid-day-events {
+            padding: 0 6px !important;
+        }
+        .fc-daygrid-event-harness {
+            margin-bottom: 6px !important;
+        }
+        .fc-event {
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            border-radius: 6px !important;
+            overflow: hidden;
+        }
+        .fc-daygrid-more-link {
+            color: #ef4444 !important;
+            font-weight: 700;
+            font-size: 0.7rem;
+            padding: 5px 8px;
+            background-color: #fef2f2;
+            border-radius: 6px;
+            display: block;
+            text-align: center;
+            margin: 4px 6px 8px 6px;
+            transition: all 0.2s;
+            text-decoration: none !important;
+        }
+        .fc-daygrid-more-link:hover {
+            background-color: #fee2e2;
+            color: #dc2626 !important;
+        }
+        .fc .fc-toolbar-title {
+            font-size: 1.25rem !important;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .fc .fc-button-primary {
+            background-color: #ffffff !important;
+            color: #475569 !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 8px !important;
+            font-weight: 600;
+            text-transform: capitalize;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            padding: 6px 16px !important;
+            transition: all 0.2s;
+        }
+        .fc .fc-button-primary:hover {
+            background-color: #f8fafc !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+        }
+        .fc .fc-button-primary:not(:disabled).fc-button-active,
+        .fc .fc-button-primary:not(:disabled):active {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+            box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05) !important;
+        }
+        .fc-toolbar.fc-header-toolbar {
+            margin-bottom: 24px !important;
+        }
     </style>
 @endsection
 
@@ -22,7 +161,7 @@
                     <x-filter-select name="id_kantor" onchange="this.form.submit()" class="py-1.5 text-xs w-48">
                         <option value="">Semua Kantor (Global)</option>
                         @foreach($kantors as $k)
-                            <option value="{{ $k->id_kantor }}" request('id_kantor') == $k->id_kantor ? 'selected' : ''>{{ $k->nama_kantor }}</option>
+                            <option value="{{ $k->id_kantor }}" {{ request('id_kantor') == $k->id_kantor ? 'selected' : '' }}>{{ $k->nama_kantor }}</option>
                         @endforeach
                     </x-filter-select>
                 </form>
@@ -48,7 +187,7 @@
                 <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                 Kalender Libur Nasional & Perusahaan
             </h3>
-            <div id="calendar" class="min-h-[450px]"></div>
+            <div id="holiday-calendar" class="min-h-[450px]"></div>
         </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -154,6 +293,9 @@
         </form>
     </x-modal>
 
+@endsection
+
+@section('script')
     <script>
         window.openEditModal = function (btn) {
             const id = btn.dataset.id;
@@ -176,7 +318,7 @@
         window.holidayCalendar = window.holidayCalendar || null;
 
         function initHolidayCalendar() {
-            var calendarEl = document.getElementById('calendar');
+            var calendarEl = document.getElementById('holiday-calendar');
             if (!calendarEl) return;
 
             if (window.holidayCalendar) {
@@ -184,8 +326,14 @@
                 window.holidayCalendar = null;
             }
 
+            // Paksa destroy jadwal calendar jika masih hidup dari halaman penjadwalan
+            if (window.jadwalCalendar) {
+                window.jadwalCalendar.destroy();
+                window.jadwalCalendar = null;
+            }
+
             const rawData = @json($hariLiburs->items() ?? $hariLiburs);
-            
+
             const calendarEvents = rawData.map(function(hl) {
                 return {
                     title: hl.keterangan,
@@ -204,14 +352,25 @@
                     center: 'title',
                     right: 'dayGridMonth'
                 },
+                buttonText: {
+                    today: 'Hari Ini',
+                    month: 'Bulan',
+                },
                 events: calendarEvents,
                 height: 'auto',
+                displayEventTime: false,
+                dayMaxEvents: 3,
+                moreLinkText: 'lainnya',
+                moreLinkClick: 'popover',
                 eventContent: function(arg) {
-                    return {
-                        html: `<div style="background:#fef2f2; color:#dc2626; padding: 2px 4px; border-radius: 4px; border-left: 3px solid #ef4444; font-weight:700; font-size: 10px; white-space: normal; line-height: 1.2;">
-                                    ${arg.event.title}
-                               </div>`
-                    };
+                    let contentEl = document.createElement('div');
+                    contentEl.innerHTML = `
+                        <div class="bg-red-50 text-red-700 px-2 py-1.5 rounded-lg border border-red-200 font-bold text-[10px] flex items-center gap-1.5 w-full truncate shadow-sm">
+                            <span class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
+                            <span class="truncate">${arg.event.title}</span>
+                        </div>
+                    `;
+                    return { domNodes: [contentEl] };
                 }
             });
 
@@ -222,7 +381,7 @@
             window.__holidayEventAttached = true;
 
             document.addEventListener('turbo:load', function () {
-                if (document.getElementById('calendar') && typeof initHolidayCalendar === 'function') {
+                if (document.getElementById('holiday-calendar') && typeof initHolidayCalendar === 'function') {
                     initHolidayCalendar();
                 }
             });
@@ -236,12 +395,12 @@
         }
 
         if (document.readyState === 'complete' || document.readyState === 'interactive') {
-            if (document.getElementById('calendar') && !window.holidayCalendar) {
+            if (document.getElementById('holiday-calendar') && !window.holidayCalendar) {
                 setTimeout(initHolidayCalendar, 50);
             }
         } else {
             document.addEventListener('DOMContentLoaded', function () {
-                if (document.getElementById('calendar') && !window.holidayCalendar) {
+                if (document.getElementById('holiday-calendar') && !window.holidayCalendar) {
                     setTimeout(initHolidayCalendar, 50);
                 }
             });

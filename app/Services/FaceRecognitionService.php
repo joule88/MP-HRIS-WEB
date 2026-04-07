@@ -130,13 +130,12 @@ class FaceRecognitionService
         }
 
         return [
-            'verified' => ($output['match'] ?? false) === true,
-            'confidence' => $output['confidence'] ?? null,
-            'svm_confidence' => $output['svm_confidence'] ?? null,
-            'normalized_distance' => $output['normalized_distance'] ?? null,
+            'verified'            => ($output['match'] ?? false) === true,
+            'confidence'          => $output['confidence'] ?? null,
+            'svm_confidence'      => $output['svm_confidence'] ?? null,
             'verification_status' => $output['verification_status'] ?? 'UNKNOWN',
-            'blur_score' => $output['blur_score'] ?? null,
-            'message' => $output['message'] ?? null,
+            'blur_score'          => $output['blur_score'] ?? null,
+            'message'             => $output['message'] ?? null,
         ];
     }
 }
