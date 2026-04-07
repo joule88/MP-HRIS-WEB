@@ -51,7 +51,7 @@ class MasterDataSeeder extends Seeder
         $hrd = User::updateOrCreate(
             ['email' => 'hrd@mpg.co.id'],
             [
-                'nik'           => 'MPG-202401-HRMG-001',
+                'nik'           => 'MP-202401-HRMG-001',
                 'nama_lengkap'  => 'HRD Manager',
                 'password'      => Hash::make('Mpg123!'),
                 'status_aktif'  => 1,
@@ -69,7 +69,7 @@ class MasterDataSeeder extends Seeder
         $pegawai = User::updateOrCreate(
             ['email' => 'budi@mpg.co.id'],
             [
-                'nik'           => 'MPG-202401-HRST-001',
+                'nik'           => 'MP-202401-HRST-001',
                 'nama_lengkap'  => 'Budi Santoso',
                 'password'      => Hash::make('Mpg123!'),
                 'status_aktif'  => 1,

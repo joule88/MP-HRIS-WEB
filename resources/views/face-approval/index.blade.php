@@ -141,25 +141,36 @@
                         <td class="px-6 py-4">
                             @if($faceStatus !== 'unregistered')
                             <div class="flex items-center justify-center gap-2">
-                                @php
-                                    $poses = ['depan' => 'Depan', 'kanan' => 'Kanan', 'kiri' => 'Kiri', 'bawah' => 'Bawah'];
-                                @endphp
-                                @foreach($poses as $poseKey => $poseLabel)
-                                    @if(isset($user->face_photos[$poseKey]))
-                                        <div class="relative group cursor-pointer" onclick="openFacePreview('{{ route('face.photo', [$user->id, $poseKey]) }}', '{{ $user->nama_lengkap }}', '{{ $poseLabel }}')">
-                                            <img src="{{ route('face.photo', [$user->id, $poseKey]) }}"
+                                @if(isset($user->face_frames) && $user->face_frame_count > 0)
+                                    @php
+                                        // Ambil 4 frame representatif (atau kurang jika tidak sampai 4)
+                                        $frameCount = $user->face_frame_count;
+                                        $step = max(1, floor($frameCount / 4));
+                                        $selectedFrames = [];
+                                        
+                                        for ($i = 0; $i < $frameCount; $i += $step) {
+                                            if (count($selectedFrames) < 4) {
+                                                // Extract "01" dari "face_datasets/1/frame_01.jpg"
+                                                if (preg_match('/frame_(\d+)\.jpg$/', $user->face_frames[$i], $matches)) {
+                                                    $selectedFrames[] = $matches[1];
+                                                }
+                                            }
+                                        }
+                                    @endphp
+                                    
+                                    @foreach($selectedFrames as $index => $frameIdx)
+                                        <div class="relative group cursor-pointer" onclick="openFacePreview('{{ route('face.frame', [$user->id, $frameIdx]) }}', '{{ $user->nama_lengkap }}', 'Frame {{ $frameIdx }}')">
+                                            <img src="{{ route('face.frame', [$user->id, $frameIdx]) }}"
                                                 class="w-12 h-12 rounded-lg object-cover border-2 border-slate-200 group-hover:border-primary transition-colors shadow-sm">
-                                            <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[9px] font-bold bg-slate-800 text-white px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">{{ $poseLabel }}</span>
+                                            <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[9px] font-bold bg-slate-800 text-white px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">Fr {{ $frameIdx }}</span>
                                         </div>
-                                    @else
-                                        <div class="w-12 h-12 rounded-lg bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center relative">
-                                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                            </svg>
-                                            <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[9px] font-bold bg-slate-400 text-white px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">{{ $poseLabel }}</span>
-                                        </div>
-                                    @endif
-                                @endforeach
+                                    @endforeach
+                                @else
+                                    <div class="text-xs text-slate-400 italic flex items-center justify-center">
+                                        <svg class="w-4 h-4 mr-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                        Memproses...
+                                    </div>
+                                @endif
                             </div>
                             @else
                                 <div class="text-center text-xs text-slate-400 italic">Belum ada foto</div>

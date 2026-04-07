@@ -46,7 +46,7 @@ class LaporanPresensiExport implements FromCollection, WithHeadings, WithMapping
 
         return [
             ['LAPORAN REKAPITULASI PRESENSI PEGAWAI'],
-            ['MPG HRIS Enterprise System'],
+            ['HRIS MP Enterprise System'],
             ['Periode: ' . $namaBulan . ' ' . $this->tahun],
             ['Dicetak: ' . Carbon::now()->translatedFormat('d F Y, H:i') . ' WIB'],
             [],
@@ -239,7 +239,7 @@ class LaporanPresensiExport implements FromCollection, WithHeadings, WithMapping
 
                 // Catatan kaki
                 $noteRow = $summaryRow + 2;
-                $sheet->setCellValue("A{$noteRow}", '* Laporan dibuat otomatis oleh sistem MPG HRIS. Data bersumber dari catatan presensi dan lembur bulan berjalan.');
+                $sheet->setCellValue("A{$noteRow}", '* Laporan dibuat otomatis oleh sistem HRIS MP. Data bersumber dari catatan presensi dan lembur bulan berjalan.');
                 $sheet->getStyle("A{$noteRow}")->getFont()->setItalic(true)->setSize(8)->getColor()->setRGB('94A3B8');
                 $sheet->mergeCells("A{$noteRow}:K{$noteRow}");
             },

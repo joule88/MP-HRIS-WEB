@@ -107,8 +107,8 @@ class PegawaiController extends Controller
 
         $nomorUrut = str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
 
-        // Format: MPG-202603-ITST-001
-        return "MPG-{$yearMonth}-{$kodeTengah}-{$nomorUrut}";
+        // Format: MP-202603-ITST-001
+        return "MP-{$yearMonth}-{$kodeTengah}-{$nomorUrut}";
     }
 
     public function store(StorePegawaiRequest $request)

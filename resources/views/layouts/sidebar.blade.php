@@ -3,11 +3,8 @@
     class="fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 flex flex-col h-full transition-transform duration-300 font-sans z-[100] shadow-xl lg:shadow-sm lg:static lg:flex-shrink-0">
 
     <div class="flex items-center justify-center h-28 border-b border-slate-100 bg-white">
-        <div class="text-center">
-            <span class="block text-3xl font-extrabold tracking-tight text-[#130F26]">
-                MPG<span class="text-blue-600">HRIS</span>
-            </span>
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1 block">Enterprise System</span>
+        <div class="text-center px-4 pt-2">
+            <img src="{{ asset('logo.png') }}" class="h-20 w-auto mx-auto object-contain border-none shadow-none" alt="HRIS MP Logo">
         </div>
     </div>
 

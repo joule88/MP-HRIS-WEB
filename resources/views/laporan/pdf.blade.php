@@ -191,7 +191,7 @@
     {{-- KOP SURAT --}}
     <div class="kop">
         <div class="kop-left">
-            <div class="company-name">MPG HRIS Enterprise System</div>
+            <div class="company-name">HRIS MP Enterprise System</div>
             <div class="company-sub">Human Resource Information System</div>
         </div>
         <div class="kop-right">
@@ -337,7 +337,7 @@
     {{-- FOOTER --}}
     <div class="footer-area">
         <div class="footer-left">
-            <p>* Laporan ini dibuat secara otomatis oleh sistem MPG HRIS.</p>
+            <p>* Laporan ini dibuat secara otomatis oleh sistem HRIS MP.</p>
             <p>* Data bersumber dari catatan presensi dan lembur bulan berjalan.</p>
         </div>
         <div class="footer-right">

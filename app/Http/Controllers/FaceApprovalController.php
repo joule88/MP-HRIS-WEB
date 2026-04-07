@@ -47,7 +47,7 @@ class FaceApprovalController extends Controller
             if (Storage::disk('local')->exists($datasetPath)) {
                 $files = Storage::disk('local')->files($datasetPath);
                 foreach ($files as $file) {
-                    if (preg_match('/frame_\d+\.jpg$/', $file)) {
+                    if (preg_match('/\/frame_\d+\.jpg$/', $file)) {
                         $frameList[] = $file;
                     }
                 }
@@ -153,9 +153,12 @@ class FaceApprovalController extends Controller
 
     public function showFrame($userId, $frameIndex)
     {
+        $rawFilePath = "face_datasets/{$userId}/raw_frame_{$frameIndex}.jpg";
         $filePath = "face_datasets/{$userId}/frame_{$frameIndex}.jpg";
 
-        if (Storage::disk('local')->exists($filePath)) {
+        if (Storage::disk('local')->exists($rawFilePath)) {
+            return response()->file(Storage::disk('local')->path($rawFilePath));
+        } elseif (Storage::disk('local')->exists($filePath)) {
             return response()->file(Storage::disk('local')->path($filePath));
         }
 

@@ -61,10 +61,10 @@ def detect_face(gray_frame):
     return faces[0]
 
 
-def process_frame(gray_frame):
+def process_frame(frame, gray_frame):
     face_rect = detect_face(gray_frame)
     if face_rect is None:
-        return None, "no_face"
+        return None, None, "no_face"
 
     (x, y, w, h) = face_rect
 
@@ -74,18 +74,19 @@ def process_frame(gray_frame):
     x2 = min(gray_frame.shape[1], x + w + padding)
     y2 = min(gray_frame.shape[0], y + h + padding)
 
-    face_crop = gray_frame[y1:y2, x1:x2]
+    face_crop_gray = gray_frame[y1:y2, x1:x2]
+    face_crop_color = frame[y1:y2, x1:x2]
 
-    face_resized = cv2.resize(face_crop, FACE_SIZE, interpolation=cv2.INTER_AREA)
+    face_resized = cv2.resize(face_crop_gray, FACE_SIZE, interpolation=cv2.INTER_AREA)
 
     blur_score = get_blur_score(face_resized)
     if blur_score < BLUR_THRESHOLD:
-        return None, f"blur ({round(blur_score, 1)})"
+        return None, None, f"blur ({round(blur_score, 1)})"
 
     face_denoised = cv2.GaussianBlur(face_resized, (3, 3), 0)
     face_final = apply_clahe(face_denoised)
 
-    return face_final, "ok"
+    return face_final, face_crop_color, "ok"
 
 
 def extract_frames(video_path, output_dir, max_frames=100):
@@ -127,7 +128,7 @@ def extract_frames(video_path, output_dir, max_frames=100):
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        face_img, status = process_frame(gray)
+        face_img, face_color, status = process_frame(frame, gray)
 
         if face_img is None:
             if "blur" in status:
@@ -138,7 +139,9 @@ def extract_frames(video_path, output_dir, max_frames=100):
             continue
 
         filename = f"frame_{saved_count:03d}.jpg"
+        filename_raw = f"raw_frame_{saved_count:03d}.jpg"
         cv2.imwrite(os.path.join(output_dir, filename), face_img)
+        cv2.imwrite(os.path.join(output_dir, filename_raw), face_color)
         saved_count += 1
 
         frame_idx += 1

@@ -48,7 +48,7 @@ class LaporanLemburExport implements FromCollection, WithHeadings, WithMapping, 
 
         return [
             ['LAPORAN REKAPITULASI LEMBUR PEGAWAI'],
-            ['MPG HRIS Enterprise System'],
+            ['HRIS MP Enterprise System'],
             ['Periode: ' . $namaBulan . ' ' . $this->tahun],
             ['Dicetak: ' . Carbon::now()->translatedFormat('d F Y, H:i') . ' WIB'],
             [],
@@ -215,7 +215,7 @@ class LaporanLemburExport implements FromCollection, WithHeadings, WithMapping, 
                 ]);
 
                 $noteRow = $summaryRow + 2;
-                $sheet->setCellValue("A{$noteRow}", '* Laporan dibuat otomatis oleh sistem MPG HRIS. Data bersumber dari catatan lembur yang telah disetujui.');
+                $sheet->setCellValue("A{$noteRow}", '* Laporan dibuat otomatis oleh sistem HRIS MP. Data bersumber dari catatan lembur yang telah disetujui.');
                 $sheet->getStyle("A{$noteRow}")->getFont()->setItalic(true)->setSize(8)->getColor()->setRGB('94A3B8');
                 $sheet->mergeCells("A{$noteRow}:I{$noteRow}");
             },

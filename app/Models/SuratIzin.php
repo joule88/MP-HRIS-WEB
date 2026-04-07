@@ -62,7 +62,7 @@ class SuratIzin extends Model
 
             if (empty($model->nomor_surat)) {
                 $count = static::whereYear('created_at', date('Y'))->count() + 1;
-                $model->nomor_surat = sprintf('%03d/MPG/IZN/%s', $count, date('Y'));
+                $model->nomor_surat = sprintf('%03d/MP/IZN/%s', $count, date('Y'));
             }
         });
     }

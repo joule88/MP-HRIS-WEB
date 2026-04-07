@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id" class="h-full bg-white">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Administrator - Absensi Digital</title>
+    <title>Login Administrator - HRIS MP</title>
     
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
@@ -97,7 +97,7 @@
         <div class="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-20 xl:px-24 bg-white">
             <div class="mx-auto w-full max-w-sm lg:w-96">
                 
-                <div class="mb-8">
+                <div class="mb-8 text-center flex flex-col items-center">
                     <h2 class="text-3xl font-extrabold text-[#130F26] tracking-tight">Sign in</h2>
                     <p class="mt-2 text-sm text-slate-500">
                         Masuk menggunakan akun administrator Anda.
