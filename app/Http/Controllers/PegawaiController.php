@@ -17,7 +17,14 @@ class PegawaiController extends Controller
 {
     public function index(Request $request)
     {
+        $user = auth()->user();
+        $isGlobalAdmin = $user->isGlobalAdmin();
+
         $query = User::with(['divisi', 'jabatan', 'kantor', 'roles'])->bukanHrd();
+
+        if (!$isGlobalAdmin) {
+            $query->where('id_kantor', $user->id_kantor);
+        }
 
         if ($request->filled('filter_jabatan')) {
             $query->where('id_jabatan', $request->filter_jabatan);
@@ -43,16 +50,25 @@ class PegawaiController extends Controller
 
         $pegawai = $query->latest()->paginate(10)->withQueryString();
 
-        $allKantor = Kantor::withCount([
+        $allKantorQuery = Kantor::withCount([
             'users as total_pegawai' => function ($q) {
                 $q->bukanHrd();
             }
-        ])->get();
+        ]);
+        if (!$isGlobalAdmin) {
+            $allKantorQuery->where('id_kantor', $user->id_kantor);
+            $totalActive = User::bukanHrd()->where('id_kantor', $user->id_kantor)->where('status_aktif', 1)->count();
+            $totalPegawaiStats = User::bukanHrd()->where('id_kantor', $user->id_kantor)->count();
+        } else {
+            $totalActive = User::bukanHrd()->where('status_aktif', 1)->count();
+            $totalPegawaiStats = User::bukanHrd()->count();
+        }
+        $allKantor = $allKantorQuery->get();
 
         $stats = [
             'kantor_list' => $allKantor,
-            'total'       => User::bukanHrd()->count(),
-            'active'      => User::bukanHrd()->where('status_aktif', 1)->count(),
+            'total'       => $totalPegawaiStats,
+            'active'      => $totalActive,
         ];
 
         $allJabatan = Jabatan::all();
@@ -169,6 +185,13 @@ class PegawaiController extends Controller
     public function show($id)
     {
         $pegawai = User::with(['divisi', 'jabatan', 'kantor', 'roles'])->findOrFail($id);
+
+        $authUser = auth()->user();
+        if (!$authUser->isGlobalAdmin()) {
+            if ($pegawai->id_kantor != $authUser->id_kantor) {
+                abort(403, 'Anda tidak berhak melihat detail karyawan dari kantor lain.');
+            }
+        }
 
         $sisaPoin = \App\Models\PoinLembur::where('id_user', $id)
             ->where('is_fully_used', false)

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\NotifikasiCreated;
 use App\Models\Notifikasi;
 use App\Models\DeviceToken;
 use App\Models\User;
@@ -24,6 +25,9 @@ class NotifikasiService
                 'is_read' => false,
             ]);
 
+            $unreadCount = Notifikasi::where('id_user', $idUser)->where('is_read', false)->count();
+            broadcast(new NotifikasiCreated($idUser, $judul, $pesan, $tipe, $unreadCount));
+
             $this->sendPushNotification($idUser, $judul, $pesan, $data);
         } catch (\Exception $e) {
             Log::error('NotifikasiService::kirim gagal: ' . $e->getMessage());
@@ -37,7 +41,7 @@ class NotifikasiService
     {
         $users = User::where('status_aktif', 1)
             ->whereDoesntHave('roles', function ($q) {
-                $q->whereIn('nama_role', ['super_admin', 'hrd']);
+                $q->whereIn('nama_role', ['super_admin']);
             })
             ->pluck('id');
 
@@ -64,20 +68,28 @@ class NotifikasiService
 
     /**
      * Kirim push notification ke device FCM user via FCM HTTP v1 API.
+     * Token yang sudah tidak valid (UNREGISTERED) otomatis dihapus dari DB.
      */
     private function sendPushNotification(int $idUser, string $judul, string $pesan, array $data = []): void
     {
-        $tokens = DeviceToken::where('id_user', $idUser)->pluck('fcm_token');
-        if ($tokens->isEmpty()) return;
+        $tokens = DeviceToken::where('id_user', $idUser)->get();
+        if ($tokens->isEmpty()) {
+            Log::debug("[FCM] User {$idUser}: tidak ada device token.");
+            return;
+        }
 
         $accessToken = $this->getFcmAccessToken();
-        if (!$accessToken) return;
+        if (!$accessToken) {
+            Log::error("[FCM] User {$idUser}: gagal mendapat OAuth token.");
+            return;
+        }
 
         $projectId = env('FIREBASE_PROJECT_ID');
 
-        foreach ($tokens as $token) {
+        foreach ($tokens as $deviceToken) {
+            $token = $deviceToken->fcm_token;
             try {
-                \Illuminate\Support\Facades\Http::withToken($accessToken)
+                $response = \Illuminate\Support\Facades\Http::withToken($accessToken)
                     ->withoutVerifying()
                     ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
                         'message' => [
@@ -92,8 +104,21 @@ class NotifikasiService
                             ],
                         ],
                     ]);
+
+                if ($response->successful()) {
+                    Log::info("[FCM] Berhasil kirim ke user {$idUser}, token=" . substr($token, 0, 20) . "...");
+                } else {
+                    $errorCode = $response->json('error.details.0.errorCode') ?? $response->json('error.status');
+                    Log::warning("[FCM] Gagal kirim ke user {$idUser}: HTTP {$response->status()}, errorCode={$errorCode}");
+
+                    // Hapus token kadaluarsa otomatis
+                    if (in_array($errorCode, ['UNREGISTERED', 'INVALID_ARGUMENT'])) {
+                        $deviceToken->delete();
+                        Log::warning("[FCM] Token kadaluarsa dihapus untuk user {$idUser}.");
+                    }
+                }
             } catch (\Exception $e) {
-                Log::error("FCM gagal untuk token $token: " . $e->getMessage());
+                Log::error("[FCM] Exception untuk user {$idUser}: " . $e->getMessage());
             }
         }
     }

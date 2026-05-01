@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\JadwalKerja;
 use App\Models\RiwayatTukarShift;
 use App\Http\Requests\StoreTukarShiftRequest;
+use App\Events\TukarShiftUpdated;
 use App\Services\NotifikasiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -173,6 +174,9 @@ class TukarShiftController extends Controller
                 'Jadwal Shift Ditukar',
                 'Shift Anda telah ditukar dengan ' . ($user1->nama_lengkap ?? 'pegawai lain') . '.'
             );
+
+            broadcast(new TukarShiftUpdated($request->id_user_1, $jadwal1->tanggal, $user2->nama_lengkap ?? 'pegawai lain', 'Shift ditukar.'));
+            broadcast(new TukarShiftUpdated($request->id_user_2, $jadwal2->tanggal, $user1->nama_lengkap ?? 'pegawai lain', 'Shift ditukar.'));
 
             return redirect()->route('tukar-shift.index')
                 ->with('success', 'Berhasil menukar shift kerja untuk kedua pegawai tersebut.');

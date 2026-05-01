@@ -50,6 +50,10 @@ Route::middleware(['auth', 'role:hrd,manager'])->group(function () {
     Route::get('/surat-izin/{id}', [SuratIzinController::class, 'show'])->name('surat-izin.show');
     Route::post('/surat-izin/{id}/approve', [SuratIzinController::class, 'approve'])->name('surat-izin.approve');
     Route::post('/surat-izin/{id}/reject', [SuratIzinController::class, 'reject'])->name('surat-izin.reject');
+
+    Route::get('/pegawai', [PegawaiController::class, 'index'])->name('pegawai.index');
+    Route::get('/pegawai/create', [PegawaiController::class, 'create'])->name('pegawai.create');
+    Route::get('/pegawai/{id}', [PegawaiController::class, 'show'])->name('pegawai.show');
 });
 
 Route::middleware(['auth', 'role:hrd,manager,supervisor'])->group(function () {
@@ -70,6 +74,9 @@ Route::middleware(['auth', 'role:hrd,manager,supervisor'])->group(function () {
     Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan.index');
     Route::get('/laporan/export', [LaporanController::class, 'exportExcel'])->name('laporan.export');
     Route::get('/laporan/export-pdf', [LaporanController::class, 'exportPdf'])->name('laporan.exportPdf');
+
+    Route::get('/laporan/izin', [LaporanController::class, 'cuti'])->name('laporan.izin');
+    Route::get('/laporan/izin/export', [LaporanController::class, 'exportIzinExcel'])->name('laporan.izin.export');
 });
 
 Route::middleware(['auth', 'role:hrd'])->group(function () {
@@ -84,14 +91,11 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::get('/penggunaan-poin', [App\Http\Controllers\PenggunaanPoinController::class, 'index'])->name('penggunaan-poin.index');
     Route::put('/penggunaan-poin/{id}', [App\Http\Controllers\PenggunaanPoinController::class, 'update'])->name('penggunaan-poin.update');
 
-    Route::get('/laporan/izin', [LaporanController::class, 'cuti'])->name('laporan.izin');
-    Route::get('/laporan/izin/export', [LaporanController::class, 'exportIzinExcel'])->name('laporan.izin.export');
-
     Route::resource('divisi', DivisiController::class)->except(['create', 'edit', 'show']);
     Route::resource('jabatan', JabatanController::class);
     Route::resource('kantor', KantorController::class)->except(['create', 'show', 'edit']);
     Route::resource('shift', \App\Http\Controllers\ShiftController::class)->except(['create', 'edit', 'show']);
-    Route::resource('pegawai', PegawaiController::class);
+    Route::resource('pegawai', PegawaiController::class)->except(['index', 'show']);
     Route::post('/pegawai/{id}/reset-password', [PegawaiController::class, 'resetPassword'])->name('pegawai.reset-password');
     Route::post('/hari-libur/sync', [\App\Http\Controllers\HariLiburController::class, 'syncHolidays'])->name('hari-libur.sync');
     Route::resource('hari-libur', \App\Http\Controllers\HariLiburController::class)->except(['create', 'edit', 'show']);
@@ -113,6 +117,7 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::post('/permissions/sync/{id_role}', [PermissionController::class, 'sync'])->name('permission.sync');
 
     Route::get('/face-approval', [FaceApprovalController::class, 'index'])->name('face.index');
+    Route::post('/face-approval/reextract-all', [FaceApprovalController::class, 'reextractAll'])->name('face.reextract_all');
     Route::get('/face-approval/photo/{userId}/{pose}', [FaceApprovalController::class, 'showPhoto'])->name('face.photo');
     Route::get('/face-approval/frame/{userId}/{frameIndex}', [FaceApprovalController::class, 'showFrame'])->name('face.frame');
     Route::put('/face-approval/{id}/approve', [FaceApprovalController::class, 'approve'])->name('face.approve');

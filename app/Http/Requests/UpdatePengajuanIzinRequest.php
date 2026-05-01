@@ -24,7 +24,7 @@ class UpdatePengajuanIzinRequest extends FormRequest
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'id_jenis_izin' => 'required|exists:jenis_izin,id_jenis_izin',
             'alasan' => 'required|string|max:150',
-            'bukti_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'bukti_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ];
     }
 
@@ -52,7 +52,7 @@ class UpdatePengajuanIzinRequest extends FormRequest
     {
         return [
             'tanggal_selesai.after_or_equal' => 'Tanggal selesai harus sama atau setelah tanggal mulai.',
-            'bukti_file.max' => 'Ukuran file maksimal 2MB.',
+            'bukti_file.max' => 'Ukuran file maksimal 10MB.',
             'bukti_file.mimes' => 'Format file harus PDF, JPG, JPEG, atau PNG.',
         ];
     }

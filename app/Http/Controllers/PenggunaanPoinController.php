@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\StatusPengajuan;
+use App\Events\PenggunaanPoinUpdated;
 use App\Models\PenggunaanPoin;
 use App\Services\PoinService;
 use App\Services\NotifikasiService;
@@ -84,11 +85,13 @@ class PenggunaanPoinController extends Controller
                     $penggunaan->id_user,
                     'poin_disetujui',
                     'Penggunaan Poin Disetujui',
-                    'Pengajuan penggunaan poin Anda pada tanggal ' . ($penggunaan->tanggal_penggunaan ? $penggunaan->tanggal_penggunaan->translatedFormat('d F Y') : '-') . ' telah disetujui.',
+                    'Penggunaan ' . $penggunaan->jumlah_poin . ' poin Anda telah disetujui.',
                     ['id_penggunaan' => $penggunaan->id_penggunaan]
                 );
 
-                $message = 'Pengajuan berhasil disetujui dan poin telah dipotong.';
+                broadcast(new PenggunaanPoinUpdated($penggunaan->id_user, $penggunaan->id_penggunaan, 'disetujui', $penggunaan->jumlah_poin, 'Penggunaan poin disetujui.'));
+
+                return redirect()->back()->with('success', 'Pengajuan berhasil disetujui dan poin telah dipotong.');
             } else {
                 DB::transaction(function () use ($penggunaan, $request) {
                     if ($penggunaan->id_status == StatusPengajuan::DISETUJUI) {
@@ -104,14 +107,14 @@ class PenggunaanPoinController extends Controller
                     $penggunaan->id_user,
                     'poin_ditolak',
                     'Penggunaan Poin Ditolak',
-                    'Pengajuan penggunaan poin Anda pada tanggal ' . ($penggunaan->tanggal_penggunaan ? $penggunaan->tanggal_penggunaan->translatedFormat('d F Y') : '-') . ' ditolak. Alasan: ' . ($request->alasan_penolakan ?? '-'),
+                    'Penggunaan ' . $penggunaan->jumlah_poin . ' poin Anda ditolak dan saldo dikembalikan.',
                     ['id_penggunaan' => $penggunaan->id_penggunaan]
                 );
 
-                $message = 'Pengajuan berhasil ditolak.';
-            }
+                broadcast(new PenggunaanPoinUpdated($penggunaan->id_user, $penggunaan->id_penggunaan, 'ditolak', $penggunaan->jumlah_poin, 'Penggunaan poin ditolak.'));
 
-            return redirect()->back()->with('success', $message);
+                return redirect()->back()->with('success', 'Pengajuan berhasil ditolak.');
+            }
 
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Gagal memproses: ' . $e->getMessage());

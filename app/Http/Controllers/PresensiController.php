@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Enums\StatusPengajuan;
 use App\Enums\StatusPresensi;
 use App\Enums\StatusValidasi;
+use App\Events\PresensiUpdated;
+use App\Events\PresensiMasuk as PresensiMasukEvent;
 use App\Models\Presensi;
 use App\Models\JadwalKerja;
 use App\Models\Kantor;
@@ -168,6 +170,14 @@ class PresensiController extends Controller
             ['id_presensi' => $presensi->id_presensi]
         );
 
+        broadcast(new PresensiUpdated(
+            $presensi->id_user,
+            $presensi->id_presensi,
+            'valid',
+            $presensi->tanggal,
+            'Presensi disetujui.'
+        ));
+
         return redirect()->back()->with('success', 'Presensi berhasil disetujui.');
     }
 
@@ -189,6 +199,14 @@ class PresensiController extends Controller
             'Presensi Anda pada tanggal ' . $presensi->tanggal . ' ditolak. Silakan hubungi HRD.',
             ['id_presensi' => $presensi->id_presensi]
         );
+
+        broadcast(new PresensiUpdated(
+            $presensi->id_user,
+            $presensi->id_presensi,
+            'ditolak',
+            $presensi->tanggal,
+            'Presensi ditolak.'
+        ));
 
         return redirect()->back()->with('success', 'Presensi berhasil ditolak.');
     }
@@ -457,6 +475,13 @@ class PresensiController extends Controller
             'keterangan_luar_radius' => $request->keterangan_luar_radius,
             'verifikasi_wajah' => $verifikasiWajah,
         ]);
+
+        broadcast(new PresensiMasukEvent(
+            $user->nama_lengkap,
+            $jamSekarang->format('H:i'),
+            ($idStatus == StatusPresensi::TEPAT_WAKTU) ? 'Tepat Waktu' : 'Terlambat',
+            $verifikasiWajah == 1,
+        ));
 
         return response()->json([
             'success' => true,

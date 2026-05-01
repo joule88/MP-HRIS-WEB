@@ -603,6 +603,14 @@
     <script src="{{ asset('js/notifications.js') }}" data-turbo-eval="always"></script>
     <script src="{{ asset('js/form-handler.js') }}" data-turbo-eval="always"></script>
 
+    <script>
+        window.__authUser = {
+            id: {{ Auth::id() }},
+            role: '{{ strtolower(Auth::user()->roles->first()?->nama_role ?? "guest") }}'
+        };
+    </script>
+    <script src="{{ asset('js/realtime.js') }}" data-turbo-eval="always"></script>
+
     @yield('script')
 
 </body>

@@ -96,9 +96,11 @@
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative">
             <x-table>
                 <x-slot:header>
+                    @if(Auth::user()->roles->contains('nama_role', 'hrd') || Auth::user()->isGlobalAdmin())
                     <th class="px-6 py-4 text-left w-12">
                         <x-checkbox id="selectAll" />
                     </th>
+                    @endif
                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-left">Pegawai</th>
                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-left">Jam Kerja</th>
                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Lokasi</th>
@@ -109,11 +111,13 @@
 
                 @forelse($presensi as $p)
                     <tr class="hover:bg-slate-50 border-b border-slate-50 last:border-b-0 {{ $p->id_validasi == StatusValidasi::PENDING ? 'bg-amber-50/50' : '' }}">
+                        @if(Auth::user()->roles->contains('nama_role', 'hrd') || Auth::user()->isGlobalAdmin())
                         <td class="px-6 py-4">
                             @if($p->id_validasi == StatusValidasi::PENDING)
                                 <x-checkbox name="presensi_ids[]" value="{{ $p->id_presensi }}" class="presensi-checkbox" />
                             @endif
                         </td>
+                        @endif
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
                                 @if($p->foto_wajah_masuk)
@@ -205,6 +209,7 @@
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-2">
+                                @if(Auth::user()->roles->contains('nama_role', 'hrd') || Auth::user()->isGlobalAdmin())
                                 @if ($p->id_validasi == StatusValidasi::PENDING)
                                     <button type="button" onclick="inlineApprove({{ $p->id_presensi }})" class="p-1.5 text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-100" title="Setujui">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
@@ -212,6 +217,7 @@
                                     <button type="button" onclick="inlineReject({{ $p->id_presensi }})" class="p-1.5 text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors border border-rose-100" title="Tolak">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                     </button>
+                                @endif
                                 @endif
 
                                 @if(Auth::user()->isGlobalAdmin())
@@ -313,6 +319,7 @@
                 <x-button type="button" variant="secondary" x-data
                     @click="$dispatch('close-modal', 'detail-presensi')">Tutup</x-button>
 
+                @if(Auth::user()->roles->contains('nama_role', 'hrd') || Auth::user()->isGlobalAdmin())
                 <form id="form-reject-presensi" action="" method="POST" class="hidden">@csrf</form>
                 <form id="form-approve-presensi" action="" method="POST" class="hidden">@csrf</form>
 
@@ -324,6 +331,7 @@
                     onclick="confirmAction(event, 'form-approve-presensi', 'Status validasi akan diperbarui menjadi Disetujui.', '#10b981', 'Setujui Absensi')">
                     Setujui Absensi
                 </x-button>
+                @endif
             </div>
         </div>
     </x-modal>

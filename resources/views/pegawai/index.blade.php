@@ -86,10 +86,12 @@
                     <x-search-input name="search" :value="request('search')" placeholder="Cari nama/email..."
                         class="!mb-0 h-10" />
 
+                    @if(auth()->user()->roles->contains('nama_role', 'hrd') || auth()->user()->isGlobalAdmin())
                     <x-button href="{{ route('pegawai.create') }}"
                         class="bg-[#130F26] text-white border-transparent h-10 flex items-center px-5 font-bold rounded-lg shadow-sm whitespace-nowrap">
                         <span class="mr-2 text-xl leading-none font-light">+</span> Tambah
                     </x-button>
+                    @endif
                 </div>
 
             </div>
@@ -176,6 +178,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                     </svg>
                                 </a>
+                                @if(auth()->user()->roles->contains('nama_role', 'hrd') || auth()->user()->isGlobalAdmin())
                                 <x-button-edit href="{{ route('pegawai.edit', $p->id) }}" />
                                 @if($p->status_aktif)
                                     <button type="button" onclick="confirmAction(event, 'delete-form-{{ $p->id }}', 'Karyawan akan dinonaktifkan (Resigned). Historis data akan tetap tersimpan.', '#f59e0b', 'Ya, Nonaktifkan')" class="p-2 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg transition flex items-center justify-center" title="Nonaktifkan (Resigned)">
@@ -185,6 +188,7 @@
                                     <button type="button" onclick="confirmAction(event, 'delete-form-{{ $p->id }}', 'Data karyawan non-aktif ini akan dihapus secara PERMANEN.', '#ef4444', 'Ya, Hapus Permanen')" class="p-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg transition flex items-center justify-center" title="Hapus Permanen">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                     </button>
+                                @endif
                                 @endif
                                 <form id="delete-form-{{ $p->id }}" action="{{ route('pegawai.destroy', $p->id) }}"
                                     method="POST" class="hidden">

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PresensiController;
@@ -80,3 +81,5 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
 });
+
+Broadcast::routes(['middleware' => ['auth:sanctum']]);

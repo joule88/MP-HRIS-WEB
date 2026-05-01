@@ -95,7 +95,7 @@ class FaceEnrollmentController extends Controller
     public function verifyFace(Request $request)
     {
         $request->validate([
-            'foto' => 'required|image|max:5120',
+            'file_wajah' => 'required|file|max:20480',
             'tipe' => 'nullable|string|in:presensi,test',
         ]);
 
@@ -106,26 +106,42 @@ class FaceEnrollmentController extends Controller
 
             $user = $request->user();
 
-            $file = $request->file('foto');
+            $file = $request->file('file_wajah');
             $result = $this->faceService->verifyFace($user->id, $file);
 
+            $predictedUserId = $result['predicted_user'] ?? null;
+            $predictedName   = null;
+            if ($predictedUserId && is_numeric($predictedUserId)) {
+                $predictedUser = \DB::table('users')
+                    ->where('id', $predictedUserId)
+                    ->value('nama_lengkap');
+                $predictedName = $predictedUser ?? "User #{$predictedUserId}";
+            } elseif ($predictedUserId === 'unknown') {
+                $predictedName = 'Tidak Dikenal';
+            }
+
+            $skorSvm         = isset($result['svm_df'])      ? round(max(-9999.9999, min(9999.9999, (float) $result['svm_df'])), 4)      : null;
+            $skorKepercayaan = isset($result['confidence'])   ? round(max(-9999.9999, min(9999.9999, (float) $result['confidence'])), 4)   : null;
+
             \DB::table('log_verifikasi_wajah')->insert([
-                'id_user' => $user->id,
-                'skor_kepercayaan' => $result['confidence'] ?? null,
-                'skor_svm' => $result['svm_confidence'] ?? null,
-                'jarak_normalisasi' => $result['normalized_distance'] ?? null,
-                'status_verifikasi' => $result['verification_status'] ?? null,
-                'apakah_cocok' => $result['verified'] ?? false,
-                'skor_blur' => $result['blur_score'] ?? null,
-                'tipe' => $tipe,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'id_user'          => $user->id,
+                'skor_kepercayaan' => $skorKepercayaan,
+                'skor_svm'         => $skorSvm,
+                'jarak_normalisasi'=> null,
+                'status_verifikasi'=> $result['verification_status'] ?? null,
+                'apakah_cocok'     => $result['verified'] ?? false,
+                'skor_blur'        => $result['blur_score'] ?? null,
+                'tipe'             => $tipe,
+                'created_at'       => now(),
+                'updated_at'       => now(),
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Wajah terverifikasi',
-                'data' => $result
+                'data'    => array_merge($result, [
+                    'predicted_name' => $predictedName,
+                ]),
             ]);
 
         } catch (\Exception $e) {

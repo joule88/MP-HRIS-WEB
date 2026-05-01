@@ -111,7 +111,7 @@ class User extends Authenticatable
     public function isGlobalAdmin(): bool
     {
         return $this->roles->contains(function ($role) {
-            return strtolower($role->nama_role) === 'hrd';
+            return in_array(strtolower($role->nama_role), ['super_admin', 'hrd']);
         });
     }
 

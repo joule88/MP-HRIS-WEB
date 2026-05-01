@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Enums\StatusVerifikasiWajah;
 use App\Models\User;
 use App\Models\DataWajah;
+use App\Events\FaceEnrollmentUpdated;
 use App\Services\NotifikasiService;
 use App\Jobs\RetrainAllModels;
+use App\Jobs\ReextractAllFrames;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -76,9 +78,9 @@ class FaceApprovalController extends Controller
             return redirect()->back()->with('error', 'Data wajah belum tersedia.');
         }
 
-        $datasetPath = storage_path("app/face_datasets/{$user->id}");
-        if (!file_exists($datasetPath) || count(glob("$datasetPath/*.jpg")) < 10) {
-            return redirect()->back()->with('error', 'Dataset wajah belum cukup. Pastikan proses extract frames sudah selesai.');
+        $datasetPath = Storage::disk('local')->path("face_datasets/{$user->id}");
+        if (!file_exists($datasetPath) || count(glob("$datasetPath/frame_*.jpg")) < 50) {
+            return redirect()->back()->with('error', 'Dataset wajah belum cukup (minimal 50 frame). Pastikan proses extract frames sudah selesai.');
         }
 
         $user->dataWajah->update(['is_verified' => StatusVerifikasiWajah::APPROVED]);
@@ -91,6 +93,8 @@ class FaceApprovalController extends Controller
             'Wajah Terverifikasi',
             'Data wajah Anda telah diverifikasi. Sekarang Anda bisa melakukan presensi.'
         );
+
+        broadcast(new FaceEnrollmentUpdated($user->id, 'approved', 'Data wajah diverifikasi.'));
 
         return redirect()->back()->with('success', 'Wajah berhasil diverifikasi. Model sedang di-training ulang.');
     }
@@ -120,6 +124,8 @@ class FaceApprovalController extends Controller
             'Data wajah Anda ditolak. Silakan lakukan registrasi ulang melalui aplikasi.'
         );
 
+        broadcast(new FaceEnrollmentUpdated($user->id, 'rejected', 'Data wajah ditolak.'));
+
         return redirect()->back()->with('success', 'Wajah ditolak. Karyawan diminta melakukan registrasi ulang.');
     }
 
@@ -147,6 +153,8 @@ class FaceApprovalController extends Controller
             'Data Wajah Direset',
             'Data wajah Anda telah direset oleh HRD. Silakan lakukan registrasi ulang melalui aplikasi.'
         );
+
+        broadcast(new FaceEnrollmentUpdated($user->id, 'reset', 'Data wajah direset.'));
 
         return redirect()->back()->with('success', 'Data wajah berhasil direset. Karyawan harus melakukan registrasi ulang.');
     }
@@ -203,5 +211,11 @@ class FaceApprovalController extends Controller
                 Storage::disk('local')->delete($file);
             }
         }
+    }
+
+    public function reextractAll()
+    {
+        dispatch(new ReextractAllFrames());
+        return redirect()->back()->with('success', 'Job re-extract frame dari video berhasil ditambahkan ke antrian. Mohon tunggu beberapa saat untuk hasilnya.');
     }
 }

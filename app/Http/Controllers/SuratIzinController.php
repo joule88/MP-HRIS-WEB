@@ -7,6 +7,7 @@ use App\Enums\StatusPengajuan;
 use App\Enums\StatusPresensi;
 use App\Enums\StatusSurat;
 use App\Enums\StatusValidasi;
+use App\Events\SuratIzinUpdated;
 use App\Models\SuratIzin;
 use App\Models\ApprovalSurat;
 use App\Models\TandaTangan;
@@ -170,6 +171,14 @@ class SuratIzinController extends Controller
                 );
             }
 
+            broadcast(new SuratIzinUpdated(
+                $surat->id_user,
+                $surat->id_surat,
+                $surat->status_surat,
+                $tahap,
+                'Surat izin ' . ($tahap === 1 ? 'disetujui Manajer' : 'disetujui sepenuhnya') . '.'
+            ));
+
             return redirect()->back()->with('success', "Surat berhasil disetujui. Status: {$statusLabel}");
 
         } catch (\Exception $e) {
@@ -241,6 +250,14 @@ class SuratIzinController extends Controller
                 'Surat izin Anda ditolak. Catatan: ' . ($request->catatan ?? '-'),
                 ['id_surat' => $surat->id_surat]
             );
+
+            broadcast(new SuratIzinUpdated(
+                $surat->id_user,
+                $surat->id_surat,
+                StatusSurat::DITOLAK,
+                $tahap,
+                'Surat izin ditolak.'
+            ));
 
             return redirect()->back()->with('success', 'Surat izin berhasil ditolak.');
 

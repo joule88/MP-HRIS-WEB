@@ -105,6 +105,7 @@
                     </div>
                 </div>
 
+                @if(auth()->user()->roles->contains('nama_role', 'hrd') || auth()->user()->isGlobalAdmin())
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                     <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Aksi Cepat</h4>
                     <div class="space-y-3">
@@ -121,6 +122,7 @@
                         </form>
                     </div>
                 </div>
+                @endif
             </div>
 
             <div class="lg:col-span-2 space-y-6">

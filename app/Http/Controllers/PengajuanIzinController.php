@@ -7,6 +7,7 @@ use App\Enums\StatusPengajuan;
 use App\Enums\StatusPresensi;
 use App\Enums\StatusSurat;
 use App\Enums\StatusValidasi;
+use App\Events\PengajuanIzinUpdated;
 use App\Http\Requests\StorePengajuanIzinRequest;
 use App\Models\Divisi;
 use App\Models\JenisIzin;
@@ -258,6 +259,14 @@ class PengajuanIzinController extends Controller
                 ['id_izin' => $izin->id_izin]
             );
 
+            broadcast(new PengajuanIzinUpdated(
+                $izin->id_user,
+                $izin->id_izin,
+                'disetujui',
+                $izin->jenisIzin->nama_izin,
+                'Pengajuan ' . $izin->jenisIzin->nama_izin . ' disetujui.'
+            ));
+
             return redirect()->back()->with('success', 'Izin disetujui & data presensi diperbarui.');
 
         } catch (\Exception $e) {
@@ -300,6 +309,14 @@ class PengajuanIzinController extends Controller
                 'Pengajuan ' . ($izin->jenisIzin->nama_izin ?? 'Izin') . ' Anda ditolak. Catatan: ' . ($request->alasan_penolakan ?? '-'),
                 ['id_izin' => $izin->id_izin]
             );
+
+            broadcast(new PengajuanIzinUpdated(
+                $izin->id_user,
+                $izin->id_izin,
+                'ditolak',
+                $izin->jenisIzin->nama_izin ?? 'Izin',
+                'Pengajuan ' . ($izin->jenisIzin->nama_izin ?? 'Izin') . ' ditolak.'
+            ));
 
             return redirect()->back()->with('success', 'Pengajuan izin berhasil ditolak.');
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Events\CutiUpdated;
 use App\Services\NotifikasiService;
 use Illuminate\Http\Request;
 
@@ -47,6 +48,8 @@ class CutiController extends Controller
             'Sisa Cuti Diperbarui',
             'Sisa cuti Anda telah diperbarui menjadi ' . $request->sisa_cuti . ' hari.'
         );
+
+        broadcast(new CutiUpdated($user->id, (int) $request->sisa_cuti, 'Sisa cuti diperbarui.'));
 
         return redirect()->back()->with('success', 'Sisa cuti ' . $user->nama_lengkap . ' berhasil diperbarui.');
     }

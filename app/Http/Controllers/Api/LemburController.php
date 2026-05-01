@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Helpers\ApiResponse;
 use App\Services\LemburService;
+use App\Events\PengajuanBaru;
 use App\Services\NotifikasiService;
 use App\Http\Requests\StoreLemburRequest;
 use App\Models\Lembur;
@@ -34,6 +35,8 @@ class LemburController extends Controller
                 'Pengajuan Lembur Baru',
                 $user->nama_lengkap . ' mengajukan lembur.'
             );
+
+            broadcast(new PengajuanBaru('lembur', $user->nama_lengkap, 'Lembur'));
 
             return ApiResponse::success(null, 'Pengajuan lembur berhasil dikirim.', 201);
 

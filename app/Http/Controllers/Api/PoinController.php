@@ -7,6 +7,7 @@ use App\Enums\StatusPengajuan;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\PenggunaanPoin;
+use App\Events\PengajuanBaru;
 use App\Services\NotifikasiService;
 use App\Services\PoinService;
 use Carbon\Carbon;
@@ -124,6 +125,8 @@ class PoinController extends Controller
                 'Pengajuan Penggunaan Poin',
                 $user->nama_lengkap . ' mengajukan penggunaan ' . $jumlah . ' poin.'
             );
+
+            broadcast(new PengajuanBaru('poin', $user->nama_lengkap, 'Penggunaan ' . $jumlah . ' Poin'));
 
             return ApiResponse::success(null, 'Pengajuan penukaran poin berhasil disimpan');
         } catch (\Exception $e) {

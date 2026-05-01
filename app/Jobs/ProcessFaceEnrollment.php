@@ -9,12 +9,12 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\Process\Process;
 
 /**
- * @method static \Illuminate\Foundation\Bus\PendingDispatch dispatch(int $userId, string $videoStoragePath, string $datasetPath)
+ * @method static \Illuminate\Foundation\Bus\PendingDispatch dispatch(int $userId, string $videoStoragePath)
  */
 class ProcessFaceEnrollment implements ShouldQueue
 {
@@ -25,34 +25,48 @@ class ProcessFaceEnrollment implements ShouldQueue
 
     protected int $userId;
     protected string $videoStoragePath;
-    protected string $datasetPath;
 
-    public function __construct(int $userId, string $videoStoragePath, string $datasetPath)
+    public function __construct(int $userId, string $videoStoragePath)
     {
         $this->userId = $userId;
         $this->videoStoragePath = $videoStoragePath;
-        $this->datasetPath = $datasetPath;
     }
 
     public function handle(): void
     {
-        $pythonPath = env('PYTHON_PATH', 'python');
         $absVideoPath = Storage::disk('local')->path("{$this->videoStoragePath}/enrollment.mp4");
-        $absDatasetPath = Storage::disk('local')->path($this->datasetPath);
 
-        $cleanEnv = [
-            'PATH' => getenv('PATH') ?: '',
-            'SYSTEMROOT' => getenv('SYSTEMROOT') ?: 'C:\\Windows',
-            'TEMP' => getenv('TEMP') ?: sys_get_temp_dir(),
-            'TMP' => getenv('TMP') ?: sys_get_temp_dir(),
-        ];
+        if (!file_exists($absVideoPath)) {
+            Log::error("Face enrollment: video tidak ditemukan untuk user {$this->userId}: {$absVideoPath}");
+            return;
+        }
 
         try {
-            $extractResult = $this->runExtractFrames(
-                $pythonPath, $absVideoPath, $absDatasetPath, $cleanEnv
-            );
+            $response = Http::timeout(120)
+                ->withHeaders([
+                    'X-API-Key' => config('services.flask.api_key'),
+                ])
+                ->attach(
+                    'video',
+                    fopen($absVideoPath, 'r'),
+                    'enrollment.mp4'
+                )
+                ->post(config('services.flask.url') . '/extract-frames', [
+                    'user_id' => (string) $this->userId,
+                    'target_frames' => 200,
+                ]);
 
-            $jumlahFrame = $extractResult['total_extracted'] ?? 0;
+            if (!$response->successful()) {
+                throw new \Exception("Flask API error: HTTP {$response->status()} - " . $response->body());
+            }
+
+            $output = $response->json();
+
+            if (!isset($output['status']) || $output['status'] !== 'success') {
+                throw new \Exception("Extract frames error: " . ($output['message'] ?? 'Unknown'));
+            }
+
+            $jumlahFrame = $output['total_extracted'] ?? 0;
 
             DB::table('data_wajah')->where('id_user', $this->userId)->update([
                 'jumlah_frame' => $jumlahFrame,
@@ -68,30 +82,5 @@ class ProcessFaceEnrollment implements ShouldQueue
                 'is_verified' => StatusVerifikasiWajah::PENDING,
             ]);
         }
-    }
-
-    private function runExtractFrames($pythonPath, $videoPath, $outputDir, $env)
-    {
-        $scriptPath = base_path('python_scripts/extract_frames.py');
-
-        $process = new Process([
-            $pythonPath, $scriptPath, $videoPath, $outputDir,
-            '--max_frames', '100'
-        ], null, $env);
-
-        $process->setTimeout(120);
-        $process->run();
-
-        if (!$process->isSuccessful()) {
-            throw new \Exception("Extract frames gagal: " . $process->getErrorOutput());
-        }
-
-        $output = json_decode($process->getOutput(), true);
-
-        if (!isset($output['status']) || $output['status'] !== 'success') {
-            throw new \Exception("Extract frames error: " . ($output['message'] ?? 'Unknown'));
-        }
-
-        return $output;
     }
 }

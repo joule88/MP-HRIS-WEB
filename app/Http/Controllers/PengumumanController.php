@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StorePengumumanRequest;
 use App\Http\Requests\UpdatePengumumanRequest;
 use App\Models\Pengumuman;
+use App\Events\PengumumanCreated;
 use App\Services\NotifikasiService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -49,6 +50,12 @@ class PengumumanController extends Controller
             $pengumuman->judul,
             ['id_pengumuman' => $pengumuman->id_pengumuman]
         );
+
+        broadcast(new PengumumanCreated(
+            $pengumuman->id_pengumuman,
+            $pengumuman->judul,
+            \Illuminate\Support\Str::limit(strip_tags($pengumuman->isi ?? ''), 100)
+        ));
 
         return redirect()->route('pengumuman.index')
             ->with('success', 'Pengumuman berhasil ditambahkan.');

@@ -158,26 +158,8 @@ CREATE TABLE `divisi` (
 ) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Table structure for table `face_registrations`
---
 
-DROP TABLE IF EXISTS `face_registrations`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `face_registrations` (
-  `id_face_registration` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  `id_pegawai` bigint(20) unsigned NOT NULL,
-  `face_embedding` text DEFAULT NULL,
-  `foto_pendaftaran` varchar(255) DEFAULT NULL,
-  `status_verifikasi` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
-  `verified_by` bigint(20) unsigned DEFAULT NULL,
-  `verified_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id_face_registration`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
 
 --
 -- Table structure for table `hari_libur`

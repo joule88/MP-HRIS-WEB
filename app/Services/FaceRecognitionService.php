@@ -5,20 +5,22 @@ namespace App\Services;
 use App\Enums\StatusVerifikasiWajah;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\Process\Process;
 use App\Jobs\ProcessFaceEnrollment;
 
 class FaceRecognitionService
 {
-    private function getCleanEnv(): array
+    private function getFlaskUrl(): string
+    {
+        return config('services.flask.url', 'http://127.0.0.1:5000');
+    }
+
+    private function getFlaskHeaders(): array
     {
         return [
-            'PATH' => getenv('PATH') ?: '',
-            'SYSTEMROOT' => getenv('SYSTEMROOT') ?: 'C:\\Windows',
-            'TEMP' => getenv('TEMP') ?: sys_get_temp_dir(),
-            'TMP' => getenv('TMP') ?: sys_get_temp_dir(),
+            'X-API-Key' => config('services.flask.api_key', ''),
         ];
     }
 
@@ -39,21 +41,11 @@ class FaceRecognitionService
         }
 
         $videoStoragePath = "face_videos/{$userId}";
-        $datasetPath = "face_datasets/{$userId}";
 
         if (Storage::disk('local')->exists($videoStoragePath)) {
             Storage::disk('local')->deleteDirectory($videoStoragePath);
         }
         Storage::disk('local')->makeDirectory($videoStoragePath);
-
-        if (Storage::disk('local')->exists($datasetPath)) {
-            $files = Storage::disk('local')->files($datasetPath);
-            foreach ($files as $file) {
-                Storage::disk('local')->delete($file);
-            }
-        } else {
-            Storage::disk('local')->makeDirectory($datasetPath);
-        }
 
         $video->storeAs($videoStoragePath, 'enrollment.mp4', 'local');
 
@@ -74,7 +66,7 @@ class FaceRecognitionService
             ->where('id', $userId)
             ->update(['is_face_registered' => 1]);
 
-        ProcessFaceEnrollment::dispatch($userId, $videoStoragePath, $datasetPath);
+        ProcessFaceEnrollment::dispatch($userId, $videoStoragePath);
 
         return [
             'status' => true,
@@ -82,59 +74,57 @@ class FaceRecognitionService
         ];
     }
 
-    public function verifyFace($userId, UploadedFile $fotoMasuk)
+    /**
+     * Verifikasi wajah menggunakan video pendek (3 detik) atau foto.
+     * File dikirim ke Flask ML API untuk diproses.
+     */
+    public function verifyFace($userId, UploadedFile $file)
     {
-        $modelDir = storage_path('app/face_models');
-        $modelFile = $modelDir . '/face_model.pkl';
+        $isVideo = str_starts_with($file->getMimeType() ?? '', 'video/');
 
-        if (!file_exists($modelFile)) {
-            throw new \Exception('Model wajah belum tersedia. Belum ada data training.');
+        $response = Http::timeout(120)
+            ->withHeaders($this->getFlaskHeaders())
+            ->attach(
+                'file',
+                fopen($file->getRealPath(), 'r'),
+                $isVideo ? 'verify.mp4' : 'verify.jpg'
+            )
+            ->post($this->getFlaskUrl() . '/verify-face', [
+                'user_id' => (string) $userId,
+                'is_video' => $isVideo ? 'true' : 'false',
+            ]);
+
+        if (!$response->successful()) {
+            $body = $response->json();
+            $msg = $body['message'] ?? 'Flask ML API tidak merespons.';
+            Log::error("[FaceVerify] Flask error (user {$userId}): HTTP {$response->status()} - {$msg}");
+            throw new \Exception("Proses verifikasi gagal di server. {$msg}");
         }
 
-        $tempFileName = "verify_{$userId}_" . time() . ".jpg";
-        $tempDir = storage_path("app/temp_verify");
-        if (!is_dir($tempDir)) {
-            mkdir($tempDir, 0755, true);
-        }
-        $absPathFoto = $tempDir . "/{$tempFileName}";
-        $fotoMasuk->move($tempDir, $tempFileName);
+        $output = $response->json();
 
-        $pythonPath = env('PYTHON_PATH', 'python');
-        $scriptPath = base_path('python_scripts/verify_face_svm.py');
-
-        $process = new Process([
-            $pythonPath,
-            $scriptPath,
-            $modelDir,
-            (string) $userId,
-            $absPathFoto
-        ], null, $this->getCleanEnv());
-
-        $process->setTimeout(60);
-        $process->run();
-
-        @unlink($absPathFoto);
-
-        if (!$process->isSuccessful()) {
-            throw new \Exception("Python error: " . $process->getErrorOutput());
+        if (!$output || !isset($output['status'])) {
+            Log::error("[FaceVerify] Output Flask tidak valid (user {$userId}): " . $response->body());
+            throw new \Exception("Respons verifikasi tidak valid. Coba beberapa saat lagi.");
         }
 
-        $output = json_decode($process->getOutput(), true);
-
-        if (!isset($output['status'])) {
-            throw new \Exception("Invalid Python output: " . $process->getOutput());
-        }
-
-        if (isset($output['status']) && $output['status'] === 'error') {
-            throw new \Exception("Error Verifikasi: " . ($output['message'] ?? 'Unknown error'));
+        if ($output['status'] === 'error') {
+            throw new \Exception($output['message'] ?? 'Unknown error');
         }
 
         return [
             'verified'            => ($output['match'] ?? false) === true,
             'confidence'          => $output['confidence'] ?? null,
-            'svm_confidence'      => $output['svm_confidence'] ?? null,
+            'svm_df'              => $output['svm_df'] ?? null,
             'verification_status' => $output['verification_status'] ?? 'UNKNOWN',
             'blur_score'          => $output['blur_score'] ?? null,
+            'frames_total'        => $output['frames_total'] ?? null,
+            'frames_approved'     => $output['frames_approved'] ?? null,
+            'frames_pending'      => $output['frames_pending'] ?? null,
+            'frames_rejected'     => $output['frames_rejected'] ?? null,
+            'approved_ratio'      => $output['approved_ratio'] ?? null,
+            'predicted_user'      => $output['predicted_user'] ?? null,
+            'expected_user'       => $output['expected_user'] ?? null,
             'message'             => $output['message'] ?? null,
         ];
     }

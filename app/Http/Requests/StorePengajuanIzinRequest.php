@@ -12,6 +12,15 @@ class StorePengajuanIzinRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation()
+    {
+        if (!$this->has('id_user') && auth()->check()) {
+            $this->merge([
+                'id_user' => auth()->id()
+            ]);
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -25,7 +34,7 @@ class StorePengajuanIzinRequest extends FormRequest
             'tanggal_mulai'  => 'required|date',
             'tanggal_selesai'=> 'required|date|after_or_equal:tanggal_mulai',
             'alasan'         => 'required|string|max:500',
-            'bukti_file'     => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'bukti_file'     => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ];
     }
 
@@ -55,7 +64,7 @@ class StorePengajuanIzinRequest extends FormRequest
     {
         return [
             'tanggal_selesai.after_or_equal' => 'Tanggal selesai harus sama atau setelah tanggal mulai.',
-            'bukti_file.max' => 'Ukuran file maksimal 2MB.',
+            'bukti_file.max' => 'Ukuran file maksimal 10MB.',
             'bukti_file.mimes' => 'Format file harus PDF, JPG, JPEG, atau PNG.',
         ];
     }

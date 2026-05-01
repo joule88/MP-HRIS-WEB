@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\JenisKompensasi as JenisKompensasiEnum;
 use App\Enums\StatusPengajuan;
+use App\Events\LemburUpdated;
 use App\Models\Lembur;
 use App\Models\User;
 use App\Models\JenisKompensasi;
@@ -93,6 +94,8 @@ class LemburController extends Controller
                     $message,
                     ['id_lembur' => $lembur->id_lembur]
                 );
+
+                broadcast(new LemburUpdated($targetUser->id, $lembur->id_lembur, 'disetujui', $message));
             }
 
             return redirect()->route('lembur.index')->with('success', 'Data lembur manual berhasil ditambahkan dan disetujui otomatis.');
@@ -130,6 +133,8 @@ class LemburController extends Controller
                     'Pengajuan lembur Anda pada tanggal ' . $lembur->tanggal_lembur . ' telah disetujui.',
                     ['id_lembur' => $lembur->id_lembur]
                 );
+
+                broadcast(new LemburUpdated($lembur->id_user, $lembur->id_lembur, 'disetujui', $message));
             } else {
                 $this->lemburService->reject($lembur, $request->alasan_penolakan);
                 $message = 'Pengajuan lembur berhasil ditolak.';
@@ -141,6 +146,8 @@ class LemburController extends Controller
                     'Pengajuan lembur Anda pada tanggal ' . $lembur->tanggal_lembur . ' ditolak. Alasan: ' . ($request->alasan_penolakan ?? '-'),
                     ['id_lembur' => $lembur->id_lembur]
                 );
+
+                broadcast(new LemburUpdated($lembur->id_user, $lembur->id_lembur, 'ditolak', $message));
             }
 
             return redirect()->back()->with('success', $message);

@@ -11,6 +11,7 @@ use App\Models\PengajuanIzin;
 use App\Models\JenisIzin;
 use App\Models\SuratIzin;
 use App\Models\TandaTangan;
+use App\Events\PengajuanBaru;
 use App\Services\NotifikasiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -159,6 +160,8 @@ class SubmissionController extends Controller
                 $user->nama_lengkap . ' mengajukan ' . ($jenisIzin->nama_izin ?? 'izin') . '.',
                 ['id_izin' => $submission->getKey()]
             );
+
+            broadcast(new PengajuanBaru('izin', $user->nama_lengkap, ($jenisIzin->nama_izin ?? 'Izin')));
 
             $responseData = $submission->toArray();
             if ($suratIzin) {

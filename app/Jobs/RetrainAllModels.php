@@ -4,20 +4,21 @@ namespace App\Jobs;
 
 use App\Enums\StatusVerifikasiWajah;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Symfony\Component\Process\Process;
 
-class RetrainAllModels implements ShouldQueue
+class RetrainAllModels implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 3600;
+    public $uniqueFor = 300;
 
     public function handle(): void
     {
@@ -30,49 +31,25 @@ class RetrainAllModels implements ShouldQueue
 
         if (count($approvedUsers) === 0) {
             Log::info("Tidak ada user approved. Skip training.");
-            $modelPath = storage_path('app/face_models/face_model.pkl');
-            if (file_exists($modelPath)) {
-                unlink($modelPath);
-            }
             return;
         }
 
-        $pythonPath = env('PYTHON_PATH', 'python');
-        $modelStoragePath = storage_path('app/face_models');
-        $baseDatasetsPath = storage_path('app/face_datasets');
-        $scriptPath = base_path('python_scripts/train_face_svm.py');
-
-        if (!file_exists($modelStoragePath)) {
-            mkdir($modelStoragePath, 0777, true);
-        }
-
-        $cleanEnv = [
-            'PATH' => getenv('PATH') ?: '',
-            'SYSTEMROOT' => getenv('SYSTEMROOT') ?: 'C:\\Windows',
-            'TEMP' => getenv('TEMP') ?: sys_get_temp_dir(),
-            'TMP' => getenv('TMP') ?: sys_get_temp_dir(),
-        ];
-
-        $approvedIdsCsv = implode(',', $approvedUsers);
+        $approvedStr = array_map('strval', $approvedUsers);
 
         try {
-            $command = [
-                $pythonPath,
-                $scriptPath,
-                $baseDatasetsPath,
-                $modelStoragePath,
-                $approvedIdsCsv,
-            ];
+            $response = Http::timeout(600)
+                ->withHeaders([
+                    'X-API-Key' => config('services.flask.api_key'),
+                ])
+                ->post(config('services.flask.url') . '/train-model', [
+                    'approved_user_ids' => $approvedStr,
+                ]);
 
-            $process = new Process($command, null, $cleanEnv);
-            $process->setTimeout(600);
-            $process->run();
-
-            if (!$process->isSuccessful()) {
-                throw new \Exception("Training gagal: " . $process->getErrorOutput());
+            if (!$response->successful()) {
+                throw new \Exception("Flask API error: HTTP {$response->status()} - " . $response->body());
             }
 
-            $output = json_decode($process->getOutput(), true);
+            $output = $response->json();
 
             if (!isset($output['status']) || $output['status'] !== 'success') {
                 throw new \Exception("Training error: " . ($output['message'] ?? 'Unknown'));
@@ -81,8 +58,22 @@ class RetrainAllModels implements ShouldQueue
             $totalUsers = $output['total_users'] ?? 0;
             Log::info("Training model global selesai. Total user: {$totalUsers}");
 
+            app(\App\Services\NotifikasiService::class)->kirimKeRole(
+                'hrd',
+                'pengumuman',
+                'Training Model Selesai',
+                "Sistem telah berhasil memperbarui model AI Face Recognition untuk {$totalUsers} karyawan."
+            );
+
         } catch (\Exception $e) {
             Log::error("Training model global GAGAL: " . $e->getMessage());
+            
+            app(\App\Services\NotifikasiService::class)->kirimKeRole(
+                'hrd',
+                'pengumuman',
+                'Training Model Gagal',
+                'Terjadi kesalahan saat melatih ulang model AI. Silakan cek log server.'
+            );
         }
     }
 }

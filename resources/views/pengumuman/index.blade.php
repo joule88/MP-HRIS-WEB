@@ -14,6 +14,7 @@
     </x-page-header>
 
     <div class="mt-6">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <x-table>
             <x-slot:header>
                 <th class="px-6 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider text-left w-14">No</th>
@@ -70,6 +71,7 @@
                 <x-empty-state colspan="5" message="Belum ada pengumuman" hint="Silakan buat pengumuman baru untuk karyawan." />
             @endforelse
         </x-table>
+        </div>
 
         <x-pagination :paginator="$pengumuman" />
     </div>

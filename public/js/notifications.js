@@ -1,4 +1,4 @@
-(function() {
+function initSweetAlerts() {
     const swalData = document.getElementById('swal-data');
     const flashError = document.querySelector('.flash-data-error');
     const flashSuccess = document.querySelector('.flash-data-success');
@@ -9,12 +9,9 @@
             title: 'Berhasil!',
             text: msg,
             timer: 3000,
-            showConfirmButton: false,
-            toast: true,
-            position: 'top-end',
-            timerProgressBar: true,
-            background: '#fff',
-            color: '#130F26'
+            showConfirmButton: true,
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#10b981'
         });
     }
 
@@ -54,7 +51,7 @@
                     });
                 }
             } catch (e) {}
-            swalData.setAttribute('data-errors', '[]');
+            swalData.setAttribute('data-errors', '');
         }
     }
 
@@ -72,6 +69,10 @@
             flashSuccess.setAttribute('data-message', '');
         }
     }
+}
+
+document.addEventListener('turbo:load', initSweetAlerts);
+document.addEventListener('DOMContentLoaded', initSweetAlerts);
 
     // ==== Polling Badge Notifikasi ====
     function updateNotifBadge() {
@@ -100,7 +101,6 @@
 
     updateNotifBadge();
     setInterval(updateNotifBadge, 30000);
-})();
 
 // ==== Alpine.js Dropdown Notifikasi ====
 function notifDropdown() {

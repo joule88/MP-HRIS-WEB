@@ -7,6 +7,7 @@
     <x-page-header title="Persetujuan Penggunaan Poin" subtitle="Kelola persetujuan penukaran poin karyawan" />
 
     <div class="mt-6">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <x-table>
             <x-slot:header>
                 <th class="px-6 py-5 text-xs font-bold text-slate-500 uppercase text-left">No</th>
@@ -85,6 +86,7 @@
                 <x-empty-state colspan="8" message="Tidak ada pengajuan penggunaan poin" />
             @endforelse
         </x-table>
+        </div>
 
         <x-pagination :paginator="$penggunaan" />
     </div>
