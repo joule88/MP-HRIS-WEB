@@ -25,4 +25,11 @@ Homestead.yaml
 Thumbs.db
 _ide_helper.php
 .phpstorm.meta.php
+_ide_helper_models.php
 
+# Flask ML API (repo terpisah)
+/flask_ml_api/
+
+# Research notebooks & scripts
+*.ipynb
+/notebook_face_recognition.py
