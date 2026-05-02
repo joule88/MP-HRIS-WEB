@@ -1,23 +1,23 @@
 version: '3'
 
 services:
-  mphris_php:
+  hrismp_php:
     build:
       context: .
       dockerfile: Dockerfile
-    image: mphris-app
-    container_name: mphris-php-container
+    image: hrismp-app
+    container_name: hrismp-php-container
     restart: unless-stopped
     working_dir: /var/www
     volumes:
       - .:/var/www
     networks:
-      - mphris-network
+      - hrismp-network
       - laravel-network
 
-  mphris_nginx:
+  hrismp_nginx:
     image: nginx:alpine
-    container_name: mphris-nginx-container
+    container_name: hrismp-nginx-container
     restart: unless-stopped
     ports:
       - "8090:80"
@@ -25,12 +25,12 @@ services:
       - .:/var/www
       - ./nginx/conf.d:/etc/nginx/conf.d
     networks:
-      - mphris-network
+      - hrismp-network
     depends_on:
-      - mphris_php
+      - hrismp_php
 
 networks:
-  mphris-network:
+  hrismp-network:
     driver: bridge
 
   laravel-network:
