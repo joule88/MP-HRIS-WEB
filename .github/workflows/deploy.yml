@@ -1,0 +1,36 @@
+name: Auto Deploy HRISMP
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Deployment Logic HRISMP
+        run: |
+          cd /www/wwwroot/joule/mp-hris-web
+
+          OLD_COMMIT=$(git rev-parse HEAD)
+
+          git fetch --all
+          git reset --hard origin/main
+
+          NEW_COMMIT=$(git rev-parse HEAD)
+
+          docker run --rm -v $(pwd):/app -w /app composer:2 install --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs
+
+          chown -R 33:33 vendor/ storage/ bootstrap/cache/
+          chmod -R 775 storage/ bootstrap/cache/
+
+          docker exec -t hrismp-php-container php artisan optimize:clear
+
+          if [ "$OLD_COMMIT" != "$NEW_COMMIT" ] && git diff --name-only $OLD_COMMIT $NEW_COMMIT | grep -q "^database/migrations/"; then
+            echo "🚀 Perubahan database terdeteksi! Menjalankan migrate..."
+            docker exec -t hrismp-php-container php artisan migrate --force
+          else
+            echo "✅ Tidak ada file migrasi baru. Skip migrate."
+          fi
