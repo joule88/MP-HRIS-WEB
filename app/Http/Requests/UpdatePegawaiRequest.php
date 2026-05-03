@@ -24,7 +24,7 @@ class UpdatePegawaiRequest extends FormRequest
                 'email',
                 Rule::unique('users', 'email')->ignore($id),
             ],
-            'no_telp'      => ['nullable', 'string', 'max:15', 'regex:/^(\+62|62|0)[0-9]{8,11}$/'],
+            'no_telp'      => ['nullable', 'string', 'max:15', 'regex:/^(\+62|62|0)[0-9]{7,12}$/'],
             'alamat'       => ['nullable', 'string'],
             'id_divisi'    => ['required', 'exists:divisi,id_divisi'],
             'id_jabatan'   => ['required', 'exists:jabatan,id_jabatan'],
