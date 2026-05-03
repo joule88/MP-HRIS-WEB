@@ -1,2 +1,6 @@
-*
-!.gitignore
+# SEMENTARA: dinonaktifkan untuk upload data inisialisasi
+# Aktifkan kembali setelah push dengan mengganti isinya kembali ke:
+# *
+# !.gitignore
+
+!*
