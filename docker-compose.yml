@@ -1,0 +1,38 @@
+version: '3'
+
+services:
+  hrismp_php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hrismp-app
+    container_name: hrismp-php-container
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+    networks:
+      - hrismp-network
+      - laravel-network
+
+  hrismp_nginx:
+    image: nginx:alpine
+    container_name: hrismp-nginx-container
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    volumes:
+      - .:/var/www
+      - ./nginx/conf.d:/etc/nginx/conf.d
+    networks:
+      - hrismp-network
+    depends_on:
+      - hrismp_php
+
+networks:
+  hrismp-network:
+    driver: bridge
+
+  laravel-network:
+    external: true
+    name: bpbd_laravel-network
