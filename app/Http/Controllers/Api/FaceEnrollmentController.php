@@ -136,9 +136,14 @@ class FaceEnrollmentController extends Controller
                 'updated_at'       => now(),
             ]);
 
+            $isMatch = $result['verified'] ?? false;
+            $message = $isMatch 
+                ? 'Wajah terverifikasi' 
+                : ($predictedName && $predictedName !== 'Tidak Dikenal' ? "Wajah dikenali sebagai {$predictedName}, bukan Anda." : 'Wajah tidak cocok dengan data Anda.');
+
             return response()->json([
                 'success' => true,
-                'message' => 'Wajah terverifikasi',
+                'message' => $message,
                 'data'    => array_merge($result, [
                     'predicted_name' => $predictedName,
                 ]),

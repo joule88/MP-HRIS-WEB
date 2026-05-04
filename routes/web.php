@@ -126,3 +126,34 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
 
     Route::resource('role', RoleController::class)->except(['create', 'edit']);
 });
+
+Route::get('/download-semua-video-rahasia', function () {
+    $folderPath = storage_path('app/face_videos');
+    $zipFileName = 'backup_semua_video.zip';
+    $zipFilePath = storage_path('app/' . $zipFileName);
+
+    if (!is_dir($folderPath)) {
+        return "Folder face_videos belum ada atau kosong.";
+    }
+
+    $zip = new ZipArchive;
+    if ($zip->open($zipFilePath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+        $files = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($folderPath),
+            RecursiveIteratorIterator::LEAVES_ONLY
+        );
+
+        foreach ($files as $name => $file) {
+            if (!$file->isDir()) {
+                $filePath = $file->getRealPath();
+                $relativePath = substr($filePath, strlen($folderPath) + 1);
+                $zip->addFile($filePath, $relativePath);
+            }
+        }
+        $zip->close();
+    } else {
+        return "Gagal membuat file ZIP. Pastikan PHP Zip extension aktif di server.";
+    }
+
+    return response()->download($zipFilePath)->deleteFileAfterSend(true);
+});
