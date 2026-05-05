@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -12,24 +13,34 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
-class ReextractAllFrames implements ShouldQueue
+class MigrateExistingEmbeddings implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 3600;
+    public $uniqueFor = 300;
 
     public function handle(): void
     {
-        Log::info("Memulai re-extract frames & embedding untuk semua user...");
+        Log::info("Memulai migrasi embedding untuk data wajah yang sudah ada...");
 
         $users = DB::table('data_wajah')
             ->whereNotNull('path_video')
+            ->whereNull('face_embeddings')
             ->get();
 
         if ($users->isEmpty()) {
-            Log::info("Tidak ada user dengan video. Skip re-extract.");
+            Log::info("Tidak ada data wajah yang perlu dimigrasi.");
+            app(\App\Services\NotifikasiService::class)->kirimKeRole(
+                'hrd',
+                'pengumuman',
+                'Migrasi Embedding Selesai',
+                'Semua data wajah sudah memiliki embedding. Tidak ada yang perlu dimigrasi.'
+            );
             return;
         }
+
+        Log::info("Ditemukan {$users->count()} user yang perlu dimigrasi.");
 
         $successCount = 0;
         $failCount = 0;
@@ -39,13 +50,13 @@ class ReextractAllFrames implements ShouldQueue
             $videoPath = Storage::disk('local')->path($data->path_video);
 
             if (!file_exists($videoPath)) {
-                Log::warning("Video tidak ditemukan untuk user {$userId}: {$videoPath}");
+                Log::warning("Migrasi: Video tidak ditemukan untuk user {$userId}: {$videoPath}");
                 $failCount++;
                 continue;
             }
 
             try {
-                $response = Http::timeout(120)
+                $response = Http::timeout(180)
                     ->withHeaders([
                         'X-API-Key' => config('services.flask.api_key'),
                     ])
@@ -66,40 +77,39 @@ class ReextractAllFrames implements ShouldQueue
                 $output = $response->json();
 
                 if (!isset($output['status']) || $output['status'] !== 'success') {
-                    throw new \Exception("Extract error: " . ($output['message'] ?? 'Unknown'));
+                    throw new \Exception("Extract & embed error: " . ($output['message'] ?? 'Unknown'));
                 }
 
-                $jumlahFrame = $output['total_extracted'] ?? 0;
                 $embedding = $output['embedding'] ?? null;
-
-                $updateData = [
-                    'jumlah_frame' => $jumlahFrame,
-                ];
+                $jumlahFrame = $output['total_extracted'] ?? 0;
 
                 if ($embedding && is_array($embedding)) {
-                    $updateData['face_embeddings'] = json_encode($embedding);
-                    $updateData['jumlah_embedding'] = $jumlahFrame;
-                    $updateData['embedding_generated_at'] = now();
+                    DB::table('data_wajah')->where('id_user', $userId)->update([
+                        'face_embeddings' => json_encode($embedding),
+                        'jumlah_embedding' => $jumlahFrame,
+                        'jumlah_frame' => $jumlahFrame,
+                        'embedding_generated_at' => now(),
+                    ]);
+
+                    Log::info("Migrasi berhasil untuk user {$userId}. Embedding dimensi: " . count($embedding));
+                    $successCount++;
+                } else {
+                    throw new \Exception("Embedding kosong dari Flask API.");
                 }
 
-                DB::table('data_wajah')->where('id_user', $userId)->update($updateData);
-
-                Log::info("Re-extract & embed berhasil untuk user {$userId}. Frames: {$jumlahFrame}");
-                $successCount++;
-
             } catch (\Exception $e) {
-                Log::error("Re-extract GAGAL untuk user {$userId}: " . $e->getMessage());
+                Log::error("Migrasi GAGAL untuk user {$userId}: " . $e->getMessage());
                 $failCount++;
             }
         }
 
-        Log::info("Re-extract selesai. Berhasil: {$successCount}, Gagal: {$failCount}");
+        Log::info("Migrasi embedding selesai. Berhasil: {$successCount}, Gagal: {$failCount}");
 
         app(\App\Services\NotifikasiService::class)->kirimKeRole(
             'hrd',
             'pengumuman',
-            'Ekstraksi & Embedding Wajah Selesai',
-            "Proses re-extract video wajah selesai. Berhasil: {$successCount}, Gagal: {$failCount}."
+            'Migrasi Embedding Selesai',
+            "Proses migrasi data wajah ke sistem baru selesai. Berhasil: {$successCount}, Gagal: {$failCount}."
         );
     }
 }

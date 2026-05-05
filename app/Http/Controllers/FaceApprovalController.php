@@ -7,8 +7,9 @@ use App\Models\User;
 use App\Models\DataWajah;
 use App\Events\FaceEnrollmentUpdated;
 use App\Services\NotifikasiService;
-use App\Jobs\RetrainAllModels;
+
 use App\Jobs\ReextractAllFrames;
+use App\Jobs\MigrateExistingEmbeddings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -85,8 +86,6 @@ class FaceApprovalController extends Controller
 
         $user->dataWajah->update(['is_verified' => StatusVerifikasiWajah::APPROVED]);
 
-        dispatch(new RetrainAllModels());
-
         app(NotifikasiService::class)->kirim(
             $user->id,
             'face_disetujui',
@@ -96,7 +95,7 @@ class FaceApprovalController extends Controller
 
         broadcast(new FaceEnrollmentUpdated($user->id, 'approved', 'Data wajah diverifikasi.'));
 
-        return redirect()->back()->with('success', 'Wajah berhasil diverifikasi. Model sedang di-training ulang.');
+        return redirect()->back()->with('success', 'Wajah berhasil diverifikasi.');
     }
 
     public function reject($id)
@@ -113,9 +112,7 @@ class FaceApprovalController extends Controller
 
         $this->cleanupUserFaceData($user->id);
 
-        if ($wasApproved) {
-            dispatch(new RetrainAllModels());
-        }
+
 
         app(NotifikasiService::class)->kirim(
             $user->id,
@@ -143,9 +140,7 @@ class FaceApprovalController extends Controller
 
         $this->cleanupUserFaceData($user->id);
 
-        if ($wasApproved) {
-            dispatch(new RetrainAllModels());
-        }
+
 
         app(NotifikasiService::class)->kirim(
             $user->id,
@@ -217,5 +212,11 @@ class FaceApprovalController extends Controller
     {
         dispatch(new ReextractAllFrames());
         return redirect()->back()->with('success', 'Job re-extract frame dari video berhasil ditambahkan ke antrian. Mohon tunggu beberapa saat untuk hasilnya.');
+    }
+
+    public function migrateEmbeddings()
+    {
+        dispatch(new MigrateExistingEmbeddings());
+        return redirect()->back()->with('success', 'Proses migrasi embedding sedang berjalan di background. Anda akan menerima notifikasi setelah selesai.');
     }
 }

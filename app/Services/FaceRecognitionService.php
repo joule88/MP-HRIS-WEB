@@ -33,11 +33,10 @@ class FaceRecognitionService
 
         $existing = DB::table('data_wajah')->where('id_user', $userId)->first();
         if ($existing && $existing->is_verified == StatusVerifikasiWajah::APPROVED) {
-            $modelPath = "face_models/user_{$userId}_svm.pkl";
-            if (Storage::disk('local')->exists($modelPath)) {
+            if ($existing->face_embeddings !== null) {
                 throw new \Exception('Wajah Anda sudah terverifikasi. Hubungi HRD untuk reset.', 400);
             }
-            Log::warning("User {$userId} is_verified=APPROVED tapi model SVM hilang, izinkan re-enrollment.");
+            Log::warning("User {$userId} is_verified=APPROVED tapi embedding kosong, izinkan re-enrollment.");
         }
 
         $videoStoragePath = "face_videos/{$userId}";
@@ -57,6 +56,9 @@ class FaceRecognitionService
                 'path_scaler_pkl' => null,
                 'path_video' => "{$videoStoragePath}/enrollment.mp4",
                 'jumlah_frame' => null,
+                'face_embeddings' => null,
+                'jumlah_embedding' => null,
+                'embedding_generated_at' => null,
                 'is_verified' => StatusVerifikasiWajah::PENDING,
                 'last_updated' => now(),
             ]
@@ -75,10 +77,62 @@ class FaceRecognitionService
     }
 
     /**
-     * Verifikasi wajah menggunakan video pendek (3 detik) atau foto.
-     * File dikirim ke Flask ML API untuk diproses.
+     * Verifikasi wajah menggunakan pendekatan embedding + cosine similarity.
+     * File dikirim ke Flask untuk generate embedding, lalu dibandingkan dengan database.
      */
     public function verifyFace($userId, UploadedFile $file)
+    {
+        $probeEmbedding = $this->getEmbedding($file);
+
+        $allEmbeddings = DB::table('data_wajah')
+            ->where('is_verified', StatusVerifikasiWajah::APPROVED)
+            ->whereNotNull('face_embeddings')
+            ->get(['id_user', 'face_embeddings']);
+
+        if ($allEmbeddings->isEmpty()) {
+            throw new \Exception('Belum ada data wajah terverifikasi di sistem.');
+        }
+
+        $bestMatch = null;
+        $bestScore = -1;
+
+        foreach ($allEmbeddings as $data) {
+            $storedEmbedding = json_decode($data->face_embeddings, true);
+            if (!is_array($storedEmbedding)) continue;
+
+            $similarity = $this->cosineSimilarity($probeEmbedding, $storedEmbedding);
+
+            if ($similarity > $bestScore) {
+                $bestScore = $similarity;
+                $bestMatch = $data->id_user;
+            }
+        }
+
+        $threshold = 0.6;
+        $isMatch = $bestScore >= $threshold && $bestMatch == $userId;
+
+        $verificationStatus = 'REJECTED';
+        if ($isMatch) {
+            $verificationStatus = 'MATCH';
+        } elseif ($bestScore >= $threshold && $bestMatch != $userId) {
+            $verificationStatus = 'MISMATCH';
+        }
+
+        Log::info("[FaceVerify] User {$userId}: best_match={$bestMatch}, score={$bestScore}, status={$verificationStatus}");
+
+        return [
+            'verified'            => $isMatch,
+            'confidence'          => round($bestScore, 4),
+            'svm_df'              => null,
+            'verification_status' => $verificationStatus,
+            'blur_score'          => $probeEmbedding['blur_score'] ?? null,
+            'predicted_user'      => $bestMatch,
+            'expected_user'       => $userId,
+            'message'             => $isMatch ? 'Wajah cocok' : 'Wajah tidak cocok',
+        ];
+    }
+
+    private function getEmbedding(UploadedFile $file): array
     {
         $isVideo = str_starts_with($file->getMimeType() ?? '', 'video/');
 
@@ -89,43 +143,52 @@ class FaceRecognitionService
                 fopen($file->getRealPath(), 'r'),
                 $isVideo ? 'verify.mp4' : 'verify.jpg'
             )
-            ->post($this->getFlaskUrl() . '/verify-face', [
-                'user_id' => (string) $userId,
+            ->post($this->getFlaskUrl() . '/get-embedding', [
                 'is_video' => $isVideo ? 'true' : 'false',
             ]);
 
         if (!$response->successful()) {
             $body = $response->json();
             $msg = $body['message'] ?? 'Flask ML API tidak merespons.';
-            Log::error("[FaceVerify] Flask error (user {$userId}): HTTP {$response->status()} - {$msg}");
-            throw new \Exception("Proses verifikasi gagal di server. {$msg}");
+            Log::error("[FaceVerify] Flask /get-embedding error: HTTP {$response->status()} - {$msg}");
+            throw new \Exception("Gagal mengekstrak embedding wajah. {$msg}");
         }
 
         $output = $response->json();
 
-        if (!$output || !isset($output['status'])) {
-            Log::error("[FaceVerify] Output Flask tidak valid (user {$userId}): " . $response->body());
-            throw new \Exception("Respons verifikasi tidak valid. Coba beberapa saat lagi.");
+        if (!$output || $output['status'] !== 'success' || !isset($output['embedding'])) {
+            throw new \Exception('Respons embedding tidak valid.');
         }
 
-        if ($output['status'] === 'error') {
-            throw new \Exception($output['message'] ?? 'Unknown error');
+        return $output;
+    }
+
+    private function cosineSimilarity(array $embeddingResponse, array $storedEmbedding): float
+    {
+        $a = $embeddingResponse['embedding'] ?? $embeddingResponse;
+        $b = $storedEmbedding;
+
+        if (count($a) !== count($b) || count($a) === 0) {
+            return 0.0;
         }
 
-        return [
-            'verified'            => ($output['match'] ?? false) === true,
-            'confidence'          => $output['confidence'] ?? null,
-            'svm_df'              => $output['svm_df'] ?? null,
-            'verification_status' => $output['verification_status'] ?? 'UNKNOWN',
-            'blur_score'          => $output['blur_score'] ?? null,
-            'frames_total'        => $output['frames_total'] ?? null,
-            'frames_approved'     => $output['frames_approved'] ?? null,
-            'frames_pending'      => $output['frames_pending'] ?? null,
-            'frames_rejected'     => $output['frames_rejected'] ?? null,
-            'approved_ratio'      => $output['approved_ratio'] ?? null,
-            'predicted_user'      => $output['predicted_user'] ?? null,
-            'expected_user'       => $output['expected_user'] ?? null,
-            'message'             => $output['message'] ?? null,
-        ];
+        $dotProduct = 0.0;
+        $normA = 0.0;
+        $normB = 0.0;
+
+        for ($i = 0; $i < count($a); $i++) {
+            $dotProduct += $a[$i] * $b[$i];
+            $normA += $a[$i] * $a[$i];
+            $normB += $b[$i] * $b[$i];
+        }
+
+        $normA = sqrt($normA);
+        $normB = sqrt($normB);
+
+        if ($normA == 0 || $normB == 0) {
+            return 0.0;
+        }
+
+        return $dotProduct / ($normA * $normB);
     }
 }
