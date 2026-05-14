@@ -12,6 +12,7 @@ use App\Jobs\ReextractAllFrames;
 use App\Jobs\RetrainAllModels;
 use App\Jobs\MigrateExistingEmbeddings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 class FaceApprovalController extends Controller
@@ -45,17 +46,13 @@ class FaceApprovalController extends Controller
         $users = $query->get();
 
         $users->each(function ($user) {
-            $datasetPath = "face_datasets/{$user->id}";
+            $dw = $user->dataWajah;
             $frameList = [];
 
-            if (Storage::disk('local')->exists($datasetPath)) {
-                $files = Storage::disk('local')->files($datasetPath);
-                foreach ($files as $file) {
-                    if (preg_match('/\/frame_\d+\.jpg$/', $file)) {
-                        $frameList[] = $file;
-                    }
+            if ($dw && $dw->jumlah_frame > 0) {
+                for ($i = 0; $i < $dw->jumlah_frame; $i++) {
+                    $frameList[] = sprintf("face_datasets/%d/frame_%03d.jpg", $user->id, $i);
                 }
-                sort($frameList);
             }
 
             $user->face_frames = $frameList;
@@ -80,9 +77,9 @@ class FaceApprovalController extends Controller
             return redirect()->back()->with('error', 'Data wajah belum tersedia.');
         }
 
-        $datasetPath = Storage::disk('local')->path("face_datasets/{$user->id}");
-        if (!file_exists($datasetPath) || count(glob("$datasetPath/frame_*.jpg")) < 50) {
-            return redirect()->back()->with('error', 'Dataset wajah belum cukup (minimal 50 frame). Pastikan proses extract frames sudah selesai.');
+        $jumlahFrame = $user->dataWajah->jumlah_frame ?? 0;
+        if ($jumlahFrame < 50) {
+            return redirect()->back()->with('error', "Dataset wajah belum cukup ({$jumlahFrame} frame, minimal 50). Pastikan proses extract frames sudah selesai.");
         }
 
         $user->dataWajah->update(['is_verified' => StatusVerifikasiWajah::APPROVED]);
@@ -159,6 +156,22 @@ class FaceApprovalController extends Controller
 
     public function showFrame($userId, $frameIndex)
     {
+        try {
+            $response = Http::timeout(15)
+                ->withHeaders([
+                    'X-API-Key' => config('services.flask.api_key'),
+                ])
+                ->get(config('services.flask.url') . "/get-frame/{$userId}/{$frameIndex}");
+
+            if ($response->successful()) {
+                return response($response->body(), 200)
+                    ->header('Content-Type', 'image/jpeg')
+                    ->header('Cache-Control', 'public, max-age=86400');
+            }
+        } catch (\Exception $e) {
+            // Fallback ke storage lokal
+        }
+
         $rawFilePath = "face_datasets/{$userId}/raw_frame_{$frameIndex}.jpg";
         $filePath = "face_datasets/{$userId}/frame_{$frameIndex}.jpg";
 
@@ -186,6 +199,16 @@ class FaceApprovalController extends Controller
 
     private function cleanupUserFaceData($userId)
     {
+        try {
+            Http::timeout(15)
+                ->withHeaders([
+                    'X-API-Key' => config('services.flask.api_key'),
+                ])
+                ->delete(config('services.flask.url') . "/delete-frames/{$userId}");
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal hapus frame di Flask untuk user {$userId}: " . $e->getMessage());
+        }
+
         $paths = [
             "face_datasets/{$userId}",
             "face_videos/{$userId}",

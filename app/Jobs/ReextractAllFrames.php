@@ -50,12 +50,7 @@ class ReextractAllFrames implements ShouldQueue
             $userId = $data->id_user;
             $current++;
 
-            $frameDir = Storage::disk('local')->path("face_datasets/{$userId}");
-            $existingFrames = 0;
-
-            if (is_dir($frameDir)) {
-                $existingFrames = count(glob($frameDir . '/frame_*.jpg'));
-            }
+            $existingFrames = $data->jumlah_frame ?? 0;
 
             if ($existingFrames >= 50) {
                 Log::info("User {$userId}: sudah punya {$existingFrames} frame. Skip extract.");
