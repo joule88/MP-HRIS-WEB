@@ -13,6 +13,7 @@ class PengumumanApiController extends Controller
         try {
             $pengumuman = Pengumuman::with('pembuat.jabatan')
                 ->orderBy('tanggal', 'desc')
+                ->orderBy('created_at', 'desc')
                 ->limit(5)
                 ->get()
                 ->map(function ($item) {

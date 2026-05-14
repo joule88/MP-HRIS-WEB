@@ -101,10 +101,40 @@ class PoinController extends Controller
                 return ApiResponse::error('Jadwal kerja tidak ditemukan untuk tanggal ' . Carbon::parse($tanggalPenggunaan)->format('d/m/Y') . '.', 400);
             }
 
-            $waktuBatasPengajuan = Carbon::parse($tanggalPenggunaan . ' ' . $jadwal->shift->jam_mulai)->subHour();
+            // --- ⚡ VALIDASI PENGGUNAAN POIN GANDA ⚡ ---
+            $existingPoin = PenggunaanPoin::where('id_user', $userId)
+                ->where('tanggal_penggunaan', $tanggalPenggunaan)
+                ->whereIn('id_status', [StatusPengajuan::PENDING, StatusPengajuan::DISETUJUI])
+                ->exists();
 
-            if (now()->greaterThan($waktuBatasPengajuan)) {
-                return ApiResponse::error('Pengajuan poin harus dilakukan maksimal 1 jam sebelum jam kerja dimulai (Batas: ' . $waktuBatasPengajuan->format('d/m/Y H:i') . ').', 400);
+            if ($existingPoin) {
+                return ApiResponse::error('Anda sudah memiliki pengajuan penggunaan poin (Pending/Disetujui) untuk tanggal ini.', 400);
+            }
+
+            // --- ⚡ VALIDASI STATUS PRESENSI ⚡ ---
+            $presensi = \App\Models\Presensi::where('id_user', $userId)
+                ->where('tanggal', $tanggalPenggunaan)
+                ->first();
+
+            if ($presensi && $presensi->jam_pulang) {
+                return ApiResponse::error('Anda sudah melakukan absen pulang pada tanggal tersebut. Penggunaan poin tidak diperbolehkan secara retroaktif.', 400);
+            }
+
+            if ($presensi && $presensi->jam_masuk && $request->id_pengurangan != JenisPengurangan::PULANG_CEPAT_POIN) {
+                return ApiResponse::error('Anda sudah tercatat melakukan absen masuk. Anda hanya diperbolehkan menggunakan poin untuk "Pulang Cepat".', 400);
+            }
+            // -------------------------------------
+
+            if ($request->id_pengurangan == JenisPengurangan::PULANG_CEPAT_POIN) {
+                $waktuBatasPulang = Carbon::parse($tanggalPenggunaan . ' ' . $request->jam_pulang_custom)->subHour();
+                if (now()->greaterThan($waktuBatasPulang)) {
+                    return ApiResponse::error('Pengajuan Pulang Cepat harus dilakukan maksimal 1 jam sebelum jam kepulangan yang diminta (Batas: ' . $waktuBatasPulang->format('H:i') . ').', 400);
+                }
+            } else {
+                $waktuBatasPengajuan = Carbon::parse($tanggalPenggunaan . ' ' . $jadwal->shift->jam_mulai)->subHour();
+                if (now()->greaterThan($waktuBatasPengajuan)) {
+                    return ApiResponse::error('Pengajuan poin harus dilakukan maksimal 1 jam sebelum jam kerja dimulai (Batas: ' . $waktuBatasPengajuan->format('d/m/Y H:i') . ').', 400);
+                }
             }
 
             PenggunaanPoin::create([

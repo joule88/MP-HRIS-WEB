@@ -10,15 +10,15 @@
         </x-page-header>
 
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <form action="{{ route('jadwal.store') }}" method="POST">
+            <form id="jadwalForm" action="{{ route('jadwal.store') }}" method="POST">
                 @csrf
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                     <x-date-input label="Tanggal Mulai" name="tanggal_mulai"
-                        value="{{ old('tanggal_mulai', now()->format('Y-m-d')) }}" required />
+                        value="{{ old('tanggal_mulai', now()->format('Y-m-d')) }}" required min="{{ date('Y-m-d') }}" />
 
                     <x-date-input label="Tanggal Selesai" name="tanggal_selesai"
-                        value="{{ old('tanggal_selesai', now()->addDays(6)->format('Y-m-d')) }}" required />
+                        value="{{ old('tanggal_selesai', now()->addDays(6)->format('Y-m-d')) }}" required min="{{ date('Y-m-d') }}" />
 
                     <x-select label="Shift" name="id_shift" id="id_shift" class="!mb-0" required>
                         <option value="">-- Pilih Shift --</option>
@@ -88,7 +88,7 @@
                 <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
                     <a href="{{ route('jadwal.index') }}"
                         class="px-4 py-2 text-sm border rounded-xl hover:bg-slate-50">Batal</a>
-                    <button type="submit"
+                    <button type="button" id="generateBtn"
                         class="px-6 py-2 text-sm bg-primary text-white rounded-xl hover:bg-primary/90 font-medium">
                         Generate Jadwal
                     </button>
@@ -128,13 +128,11 @@
         })();
 
         (function() {
-            const formObj = document.querySelector('form');
-            if (formObj) {
-                formObj.addEventListener('submit', function (e) {
-                    e.preventDefault();
+            const formObj = document.getElementById('jadwalForm');
+            const generateBtn = document.getElementById('generateBtn');
 
-                    let form = this;
-
+            if (generateBtn && formObj) {
+                generateBtn.addEventListener('click', function () {
                     let selectedUserIds = [];
                     document.querySelectorAll('.user-checkbox:checked').forEach((cb) => {
                         selectedUserIds.push(cb.value);
@@ -154,7 +152,7 @@
 
                     Swal.fire({
                         title: 'Memeriksa Jadwal...',
-                        text: 'Sedang mengecek bentrok penggunaan poin',
+                        text: 'Sedang mengecek bentrok penggunaan poin & hari libur',
                         allowOutsideClick: false,
                         didOpen: () => { Swal.showLoading() }
                     });
@@ -169,23 +167,47 @@
                     })
                         .then(response => response.json())
                         .then(data => {
+                            let warnings = [];
+
+                            if (data.has_holiday) {
+                                warnings.push(data.holiday_message);
+                            }
                             if (data.has_conflict) {
+                                warnings.push(data.conflict_message);
+                            }
+
+                            if (warnings.length > 0) {
                                 Swal.fire({
-                                    title: '⚠️ Konflik Data Poin!',
-                                    html: data.message,
+                                    title: data.has_conflict ? '⚠️ Konflik & Peringatan!' : '📅 Peringatan Hari Libur',
+                                    html: warnings.join('<hr class="my-3 border-slate-200">') +
+                                        '<br><small class="text-slate-500">Apakah Anda yakin ingin melanjutkan pembuatan jadwal?</small>',
                                     icon: 'warning',
                                     showCancelButton: true,
-                                    confirmButtonColor: '#d33',
-                                    cancelButtonColor: '#3085d6',
-                                    confirmButtonText: 'Ya, Ubah & Batalkan Poin',
+                                    confirmButtonColor: data.has_conflict ? '#d33' : '#3085d6',
+                                    cancelButtonColor: '#6b7280',
+                                    confirmButtonText: data.has_conflict ? 'Ya, Lanjutkan & Batalkan Poin' : 'Ya, Tetap Buat Jadwal',
                                     cancelButtonText: 'Batal'
                                 }).then((result) => {
                                     if (result.isConfirmed) {
-                                        form.submit();
+                                        formObj.submit();
                                     }
                                 });
                             } else {
-                                form.submit();
+                                Swal.fire({
+                                    title: '📋 Konfirmasi Jadwal',
+                                    html: `Anda akan membuat jadwal kerja untuk <b>${selectedUserIds.length} pegawai</b> ` +
+                                        `dari tanggal <b>${payload.tanggal_mulai}</b> s/d <b>${payload.tanggal_selesai}</b>.<br><br>Lanjutkan?`,
+                                    icon: 'question',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#3085d6',
+                                    cancelButtonColor: '#6b7280',
+                                    confirmButtonText: 'Ya, Buat Jadwal',
+                                    cancelButtonText: 'Batal'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        formObj.submit();
+                                    }
+                                });
                             }
                         })
                         .catch(error => {

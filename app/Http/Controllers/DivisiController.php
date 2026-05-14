@@ -33,12 +33,16 @@ class DivisiController extends Controller
 
     public function destroy($id)
     {
+        if (\App\Models\User::where('id_divisi', $id)->exists()) {
+            return redirect()->back()->with('error', 'Divisi tidak bisa dihapus karena masih digunakan oleh data pegawai.');
+        }
+
         try {
             Divisi::findOrFail($id)->delete();
             return redirect()->back()->with('success', 'Divisi berhasil dihapus.');
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->getCode() === '23000') {
-                return redirect()->back()->with('error', 'Divisi tidak bisa dihapus karena masih digunakan oleh data pegawai.');
+                return redirect()->back()->with('error', 'Divisi tidak bisa dihapus karena masih terhubung dengan data lain.');
             }
             throw $e;
         }

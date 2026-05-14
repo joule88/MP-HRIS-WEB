@@ -89,7 +89,13 @@ class PenggunaanPoinController extends Controller
                     ['id_penggunaan' => $penggunaan->id_penggunaan]
                 );
 
-                broadcast(new PenggunaanPoinUpdated($penggunaan->id_user, $penggunaan->id_penggunaan, 'disetujui', $penggunaan->jumlah_poin, 'Penggunaan poin disetujui.'));
+                broadcast(new PenggunaanPoinUpdated(
+                    (int)$penggunaan->id_user, 
+                    (int)$penggunaan->id_penggunaan, 
+                    'disetujui', 
+                    (int)$penggunaan->jumlah_poin, 
+                    'Penggunaan poin disetujui.'
+                ));
 
                 return redirect()->back()->with('success', 'Pengajuan berhasil disetujui dan poin telah dipotong.');
             } else {
@@ -111,7 +117,13 @@ class PenggunaanPoinController extends Controller
                     ['id_penggunaan' => $penggunaan->id_penggunaan]
                 );
 
-                broadcast(new PenggunaanPoinUpdated($penggunaan->id_user, $penggunaan->id_penggunaan, 'ditolak', $penggunaan->jumlah_poin, 'Penggunaan poin ditolak.'));
+                broadcast(new PenggunaanPoinUpdated(
+                    (int)$penggunaan->id_user, 
+                    (int)$penggunaan->id_penggunaan, 
+                    'ditolak', 
+                    (int)$penggunaan->jumlah_poin, 
+                    'Penggunaan poin ditolak.'
+                ));
 
                 return redirect()->back()->with('success', 'Pengajuan berhasil ditolak.');
             }

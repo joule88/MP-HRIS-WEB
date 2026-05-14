@@ -32,13 +32,26 @@ class PengajuanIzinController extends Controller
         $statusId = $request->get('status');
         $user = Auth::user();
         $isGlobalAdmin = $user->isGlobalAdmin();
+        $isSuperAdmin = $user->isSuperAdmin();
 
         $query = PengajuanIzin::with(['user', 'jenisIzin', 'statusPengajuan', 'suratIzin']);
 
-        if (!$isGlobalAdmin) {
-            $query->whereHas('user', function ($q) use ($user) {
-                $q->where('id_kantor', $user->id_kantor);
-            });
+        if (!$isSuperAdmin) {
+            $isManager = $user->roles->contains('nama_role', 'manager');
+            if (!$isManager) {
+                $query->where(function ($q) {
+                    $q->where('id_jenis_izin', '!=', JenisIzinEnum::CUTI)
+                      ->orWhereHas('suratIzin', function ($sq) {
+                          $sq->where('status_surat', '!=', StatusSurat::MENUNGGU_MANAJER);
+                      });
+                });
+            }
+
+            if (!$isGlobalAdmin) {
+                $query->whereHas('user', function ($q) use ($user) {
+                    $q->where('id_kantor', $user->id_kantor);
+                });
+            }
         }
 
         if ($statusId) {
@@ -75,8 +88,18 @@ class PengajuanIzinController extends Controller
 
     public function store(StorePengajuanIzinRequest $request)
     {
-
         $jenisIzinData = JenisIzin::find($request->id_jenis_izin);
+
+        $existingPending = PengajuanIzin::where('id_user', $request->id_user)
+            ->where('id_jenis_izin', $request->id_jenis_izin)
+            ->where('id_status', StatusPengajuan::PENDING)
+            ->exists();
+
+        if ($existingPending) {
+            $namaIzin = $jenisIzinData->nama_izin ?? 'Izin';
+            return back()->withInput()->with('error', "Pegawai masih memiliki pengajuan {$namaIzin} yang menunggu persetujuan.");
+        }
+
         if ($jenisIzinData && $jenisIzinData->id_jenis_izin == JenisIzinEnum::CUTI) {
             $pegawai = User::find($request->id_user);
             $tanggalMulai = Carbon::parse($request->tanggal_mulai);
@@ -190,6 +213,17 @@ class PengajuanIzinController extends Controller
             }
 
             DB::commit();
+
+            $pegawai = User::find($request->id_user);
+            $targetRole = ($izin->id_jenis_izin == JenisIzinEnum::CUTI) ? 'manager' : 'hrd';
+            app(NotifikasiService::class)->kirimKeRole(
+                $targetRole,
+                'pengajuan_baru',
+                'Pengajuan Baru: ' . ($jenisIzinData->nama_izin ?? 'Izin'),
+                ($pegawai->nama_lengkap ?? 'Pegawai') . ' mengajukan ' . ($jenisIzinData->nama_izin ?? 'izin') . '.',
+                ['id_izin' => $izin->id_izin]
+            );
+
             return redirect()->back()->with('success', 'Pengajuan izin berhasil dibuat.');
 
         } catch (\Exception $e) {
@@ -260,8 +294,8 @@ class PengajuanIzinController extends Controller
             );
 
             broadcast(new PengajuanIzinUpdated(
-                $izin->id_user,
-                $izin->id_izin,
+                (int) $izin->id_user,
+                (int) $izin->id_izin,
                 'disetujui',
                 $izin->jenisIzin->nama_izin,
                 'Pengajuan ' . $izin->jenisIzin->nama_izin . ' disetujui.'
@@ -311,8 +345,8 @@ class PengajuanIzinController extends Controller
             );
 
             broadcast(new PengajuanIzinUpdated(
-                $izin->id_user,
-                $izin->id_izin,
+                (int) $izin->id_user,
+                (int) $izin->id_izin,
                 'ditolak',
                 $izin->jenisIzin->nama_izin ?? 'Izin',
                 'Pengajuan ' . ($izin->jenisIzin->nama_izin ?? 'Izin') . ' ditolak.'

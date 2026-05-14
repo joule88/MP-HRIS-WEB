@@ -596,7 +596,7 @@
 
     <script src="{{ asset('js/dashboard-script.js') }}"></script>
 
-    <div id="swal-data" data-success="{{ session('success') }}" data-error="{{ session('error') }}"
+    <div id="swal-data" data-success="{{ session('success') }}" data-error="{{ session('error') }}" data-warning="{{ session('warning') }}"
         data-errors='@json($errors->all())'>
     </div>
 

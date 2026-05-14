@@ -9,6 +9,7 @@ use App\Events\FaceEnrollmentUpdated;
 use App\Services\NotifikasiService;
 
 use App\Jobs\ReextractAllFrames;
+use App\Jobs\RetrainAllModels;
 use App\Jobs\MigrateExistingEmbeddings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -86,6 +87,8 @@ class FaceApprovalController extends Controller
 
         $user->dataWajah->update(['is_verified' => StatusVerifikasiWajah::APPROVED]);
 
+        RetrainAllModels::dispatch();
+
         app(NotifikasiService::class)->kirim(
             $user->id,
             'face_disetujui',
@@ -95,7 +98,7 @@ class FaceApprovalController extends Controller
 
         broadcast(new FaceEnrollmentUpdated($user->id, 'approved', 'Data wajah diverifikasi.'));
 
-        return redirect()->back()->with('success', 'Wajah berhasil diverifikasi.');
+        return redirect()->back()->with('success', 'Wajah berhasil diverifikasi. Model SVM sedang di-training ulang.');
     }
 
     public function reject($id)
@@ -206,6 +209,12 @@ class FaceApprovalController extends Controller
                 Storage::disk('local')->delete($file);
             }
         }
+    }
+
+    public function trainingStatus()
+    {
+        $status = \Illuminate\Support\Facades\Cache::get('face_training_status', ['phase' => 'idle']);
+        return response()->json($status);
     }
 
     public function reextractAll()

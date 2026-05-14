@@ -30,7 +30,7 @@ class JadwalController extends Controller
             return $s;
         });
 
-        $pegawaiQuery = User::where('status_aktif', 1)->bukanHrd();
+        $pegawaiQuery = User::where('status_aktif', 1)->bukanHrd()->with(['kantor', 'jabatan']);
         if (!$isGlobalAdmin) {
             $pegawaiQuery->where('id_kantor', $user->id_kantor);
         }
@@ -254,25 +254,66 @@ class JadwalController extends Controller
 
         $count = 0;
         $refundCount = 0;
+        $liburCount = 0;
+        $skipPresensiCount = 0;
+        $skipTukarShiftCount = 0;
+        $skipIzinCount = 0;
         $poinService = new PoinService();
 
         $usersData = \App\Models\User::whereIn('id', $userIds)->get(['id', 'id_kantor'])->keyBy('id');
 
         try {
-            DB::transaction(function () use ($period, $userIds, $shiftId, &$count, &$refundCount, $poinService, $usersData) {
+            DB::transaction(function () use ($period, $userIds, $shiftId, &$count, &$refundCount, &$liburCount, &$skipPresensiCount, &$skipTukarShiftCount, &$skipIzinCount, $poinService, $usersData) {
                 foreach ($period as $date) {
                     $dateStr = $date->format('Y-m-d');
                     $libursDate = \App\Models\HariLibur::where('tanggal', $dateStr)->get();
 
                     foreach ($userIds as $userId) {
+                        // 1. Cek Presensi (Sudah absen masuk atau pulang)
+                        $hasPresensi = \App\Models\Presensi::where('id_user', $userId)
+                            ->where('tanggal', $dateStr)
+                            ->where(function ($q) {
+                                $q->whereNotNull('jam_masuk')->orWhereNotNull('jam_pulang');
+                            })->exists();
+
+                        if ($hasPresensi) {
+                            $skipPresensiCount++;
+                            continue;
+                        }
+
+                        // 2. Cek Riwayat Tukar Shift
+                        $existingJadwal = JadwalKerja::where('id_user', $userId)
+                            ->where('tanggal', $dateStr)
+                            ->first();
+
+                        if ($existingJadwal) {
+                            $hasTukarShift = \App\Models\RiwayatTukarShift::where('id_jadwal_1', $existingJadwal->id_jadwal)
+                                ->orWhere('id_jadwal_2', $existingJadwal->id_jadwal)
+                                ->exists();
+
+                            if ($hasTukarShift) {
+                                $skipTukarShiftCount++;
+                                continue;
+                            }
+                        }
+
+                        // 3. Cek Pengajuan Izin / Cuti / Sakit yang sudah disetujui
+                        $hasIzin = \App\Models\PengajuanIzin::where('id_user', $userId)
+                            ->where('id_status', \App\Enums\StatusPengajuan::DISETUJUI)
+                            ->whereDate('tanggal_mulai', '<=', $dateStr)
+                            ->whereDate('tanggal_selesai', '>=', $dateStr)
+                            ->exists();
+
+                        if ($hasIzin) {
+                            $skipIzinCount++;
+                            continue;
+                        }
+
                         $user = $usersData->get($userId);
                         $isLibur = $libursDate->contains(function ($libur) use ($user) {
                             return is_null($libur->id_kantor) || ($user && $libur->id_kantor == $user->id_kantor);
                         });
 
-                        if ($isLibur) {
-                            continue;
-                        }
                         $conflictPoin = PenggunaanPoin::where('id_user', $userId)
                             ->where('tanggal_penggunaan', $dateStr)
                             ->where('id_status', 2)
@@ -288,17 +329,33 @@ class JadwalController extends Controller
                             ['id_shift' => $shiftId]
                         );
                         $count++;
+
+                        if ($isLibur) {
+                            $liburCount++;
+                        }
                     }
                 }
             });
 
             $message = "Berhasil memproses $count jadwal kerja!";
+            if ($liburCount > 0) {
+                $message .= " ⚠️ INFO: $liburCount jadwal dibuat pada tanggal hari libur.";
+            }
+            if ($skipPresensiCount > 0) {
+                $message .= " 🛑 $skipPresensiCount jadwal dilewati karena pegawai sudah melakukan presensi.";
+            }
+            if ($skipTukarShiftCount > 0) {
+                $message .= " 🛑 $skipTukarShiftCount jadwal dilewati karena terkait dengan riwayat tukar shift.";
+            }
+            if ($skipIzinCount > 0) {
+                $message .= " 🛑 $skipIzinCount jadwal dilewati karena pegawai sedang izin/cuti/sakit.";
+            }
             if ($refundCount > 0) {
                 $message .= " ⚠️ PERINGATAN: $refundCount penggunaan poin dibatalkan otomatis & saldo dikembalikan karena konflik jadwal.";
-                return redirect()->route('jadwal.index')->with('warning', $message);
             }
 
-            return redirect()->route('jadwal.index')->with('success', $message);
+            $hasWarning = $liburCount > 0 || $skipPresensiCount > 0 || $skipTukarShiftCount > 0 || $skipIzinCount > 0 || $refundCount > 0;
+            return redirect()->route('jadwal.index')->with($hasWarning ? 'warning' : 'success', $message);
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
@@ -378,13 +435,53 @@ class JadwalController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($data) {
-                JadwalKerja::whereIn('id_user', $data['user_ids'])
+            $countDeleted = 0;
+            $skipPresensiCount = 0;
+            $skipTukarShiftCount = 0;
+
+            DB::transaction(function () use ($data, &$countDeleted, &$skipPresensiCount, &$skipTukarShiftCount) {
+                $jadwals = JadwalKerja::whereIn('id_user', $data['user_ids'])
                     ->whereBetween('tanggal', [$data['tanggal_mulai'], $data['tanggal_selesai']])
-                    ->delete();
+                    ->get();
+
+                foreach ($jadwals as $jadwal) {
+                    // Cek Presensi (Sudah absen masuk atau pulang)
+                    $hasPresensi = \App\Models\Presensi::where('id_user', $jadwal->id_user)
+                        ->where('tanggal', $jadwal->tanggal)
+                        ->where(function ($q) {
+                            $q->whereNotNull('jam_masuk')->orWhereNotNull('jam_pulang');
+                        })->exists();
+
+                    if ($hasPresensi) {
+                        $skipPresensiCount++;
+                        continue;
+                    }
+
+                    // Cek Riwayat Tukar Shift
+                    $hasTukarShift = \App\Models\RiwayatTukarShift::where('id_jadwal_1', $jadwal->id_jadwal)
+                        ->orWhere('id_jadwal_2', $jadwal->id_jadwal)
+                        ->exists();
+
+                    if ($hasTukarShift) {
+                        $skipTukarShiftCount++;
+                        continue;
+                    }
+
+                    $jadwal->delete();
+                    $countDeleted++;
+                }
             });
 
-            return redirect()->route('jadwal.index')->with('success', 'Jadwal kerja berhasil dihapus pada rentang tanggal tersebut.');
+            $message = "Berhasil menghapus $countDeleted jadwal kerja!";
+            if ($skipPresensiCount > 0) {
+                $message .= " 🛑 $skipPresensiCount jadwal tidak dihapus karena pegawai sudah presensi.";
+            }
+            if ($skipTukarShiftCount > 0) {
+                $message .= " 🛑 $skipTukarShiftCount jadwal tidak dihapus karena terkait riwayat tukar shift.";
+            }
+
+            $hasWarning = $skipPresensiCount > 0 || $skipTukarShiftCount > 0;
+            return redirect()->route('jadwal.index')->with($hasWarning ? 'warning' : 'success', $message);
         } catch (\Exception $e) {
             return redirect()->route('jadwal.index')->with('error', 'Terjadi kesalahan saat menghapus jadwal: ' . $e->getMessage());
         }
@@ -397,26 +494,49 @@ class JadwalController extends Controller
         $endDate = $request->tanggal_selesai;
 
         if (empty($userIds) || !$startDate || !$endDate) {
-            return response()->json(['has_conflict' => false]);
+            return response()->json(['has_conflict' => false, 'has_holiday' => false]);
         }
 
+        // Cek konflik poin
         $conflicts = PenggunaanPoin::with('user')
             ->whereIn('id_user', $userIds)
             ->whereBetween('tanggal_penggunaan', [$startDate, $endDate])
             ->where('id_status', 2)
             ->get();
 
+        $conflictData = null;
         if ($conflicts->count() > 0) {
             $details = $conflicts->map(function ($item) {
                 return "- " . $item->user->nama_lengkap . " (" . date('d M Y', strtotime($item->tanggal_penggunaan)) . ")";
             })->join('<br>');
 
-            return response()->json([
+            $conflictData = [
                 'has_conflict' => true,
                 'message' => "Ditemukan <b>{$conflicts->count()} karyawan</b> yang sedang menggunakan Poin (Cuti/Pulang Cepat) pada tanggal ini:<br><br><small>$details</small><br><br>Jika dilanjutkan, <b>Penggunaan Poin akan DIBATALKAN otomatis</b> dan saldo dikembalikan."
-            ]);
+            ];
         }
 
-        return response()->json(['has_conflict' => false]);
+        // Cek hari libur dalam rentang tanggal
+        $hariLiburs = \App\Models\HariLibur::whereBetween('tanggal', [$startDate, $endDate])->get();
+        $holidayData = null;
+        if ($hariLiburs->count() > 0) {
+            $holidayDetails = $hariLiburs->map(function ($hl) {
+                return "- " . \Carbon\Carbon::parse($hl->tanggal)->translatedFormat('d M Y') . " (" . $hl->keterangan . ")";
+            })->join('<br>');
+
+            $holidayData = [
+                'has_holiday' => true,
+                'holiday_count' => $hariLiburs->count(),
+                'message' => "Terdapat <b>{$hariLiburs->count()} hari libur</b> dalam rentang tanggal ini:<br><br><small>$holidayDetails</small><br><br>Jadwal tetap akan dibuat pada tanggal tersebut."
+            ];
+        }
+
+        return response()->json([
+            'has_conflict' => $conflictData ? true : false,
+            'conflict_message' => $conflictData['message'] ?? null,
+            'has_holiday' => $holidayData ? true : false,
+            'holiday_count' => $holidayData['holiday_count'] ?? 0,
+            'holiday_message' => $holidayData['message'] ?? null,
+        ]);
     }
 }

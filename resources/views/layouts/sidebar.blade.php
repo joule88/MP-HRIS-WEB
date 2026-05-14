@@ -46,7 +46,7 @@
         </div>
 
         {{-- ════════════════════════════════ SEKSI: MANAJEMEN ════════════════════════════════ --}}
-        @if($canManage || $canViewPegawai)
+        @if($canManage || $canViewPegawai || $canViewJadwal)
         <div class="pt-6 pb-3 px-4 flex items-center gap-3">
             <div class="h-px bg-slate-200 flex-1"></div>
             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Manajemen</span>
@@ -177,8 +177,8 @@
             </a>
             @endif
 
-            {{-- Manajemen Izin – HRD & Manager --}}
-            @if($canApproveIzin)
+            {{-- Manajemen Izin – HRD Only --}}
+            @if($isHrd)
             <a href="{{ route('izin.index') }}"
                 class="flex items-center px-4 py-3 rounded-xl transition-all duration-200 group {{ request()->routeIs('izin.*') ? 'bg-[#130F26] text-white shadow-lg shadow-[#130F26]/30' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' }}">
                 <svg class="w-5 h-5 mr-3 {{ request()->routeIs('izin.*') ? 'text-white' : 'text-slate-400 group-hover:text-slate-600' }} group-hover:scale-110 transition-transform duration-300"
@@ -197,8 +197,10 @@
                     <span class="ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $pendingIzin }}</span>
                 @endif
             </a>
+            @endif
 
             {{-- Surat Izin – HRD & Manager --}}
+            @if($canApproveIzin)
             <a href="{{ route('surat-izin.index') }}"
                 class="flex items-center px-4 py-3 rounded-xl transition-all duration-200 group {{ request()->routeIs('surat-izin.*') ? 'bg-[#130F26] text-white shadow-lg shadow-[#130F26]/30' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' }}">
                 <svg class="w-5 h-5 mr-3 {{ request()->routeIs('surat-izin.*') ? 'text-white' : 'text-slate-400 group-hover:text-slate-600' }} group-hover:scale-110 transition-transform duration-300"
@@ -209,7 +211,18 @@
                 </svg>
                 <span class="flex-1 font-semibold text-sm">Surat Izin</span>
                 @php
-                    $suratQuery = \App\Models\SuratIzin::whereIn('status_surat', ['menunggu_manajer', 'menunggu_hrd']);
+                    $suratQuery = \App\Models\SuratIzin::query();
+                    $statuses = [];
+                    if ($isManager) $statuses[] = 'menunggu_manajer';
+                    if ($isHrd) $statuses[] = 'menunggu_hrd';
+                    if ($isGlobalAdmin && !$isHrd) {
+                        $statuses = ['menunggu_manajer', 'menunggu_hrd']; // superadmin
+                    }
+                    if (count($statuses) > 0) {
+                        $suratQuery->whereIn('status_surat', $statuses);
+                    } else {
+                        $suratQuery->where('id_surat', -1); // don't count if no matching statuses
+                    }
                     if (!$isGlobalAdmin) { $suratQuery->whereHas('user', fn($q) => $q->where('id_kantor', $userKantor)); }
                     $pendingSurat = $suratQuery->count();
                 @endphp

@@ -32,7 +32,22 @@ class SubmissionController extends Controller
         try {
             $user = Auth::user();
 
+            $ttdAktif = TandaTangan::where('id_user', $user->id)->active()->first();
+            if (!$ttdAktif) {
+                return ApiResponse::error('Anda belum memiliki tanda tangan digital. Silakan buat di menu Profil terlebih dahulu.', 400);
+            }
+
             $jenisIzin = JenisIzin::find($request->id_jenis_izin);
+
+            $existingPending = PengajuanIzin::where('id_user', $user->id)
+                ->where('id_jenis_izin', $request->id_jenis_izin)
+                ->where('id_status', StatusPengajuan::PENDING)
+                ->exists();
+
+            if ($existingPending) {
+                $namaIzin = $jenisIzin->nama_izin ?? 'Izin';
+                return ApiResponse::error("Anda masih memiliki pengajuan {$namaIzin} yang menunggu persetujuan. Tunggu hingga diproses.", 400);
+            }
             if ($jenisIzin && $jenisIzin->id_jenis_izin == JenisIzinEnum::CUTI) {
                 $tanggalMulai = Carbon::parse($request->tanggal_mulai);
                 $tanggalSelesai = Carbon::parse($request->tanggal_selesai);
@@ -123,7 +138,7 @@ class SubmissionController extends Controller
                 'id_status' => StatusPengajuan::PENDING
             ]);
 
-            $ttdAktif = TandaTangan::where('id_user', $user->id)->active()->first();
+            // TTD sudah dicek di awal, gunakan variable yang sama
 
             $namaJenisIzin = $jenisIzin->nama_izin ?? 'Izin';
             $tglMulai = Carbon::parse($request->tanggal_mulai)->translatedFormat('d F Y');
@@ -153,8 +168,9 @@ class SubmissionController extends Controller
 
             DB::commit();
 
+            $targetRole = ($jenisIzin && $jenisIzin->id_jenis_izin == JenisIzinEnum::CUTI) ? 'manager' : 'hrd';
             app(NotifikasiService::class)->kirimKeRole(
-                'hrd',
+                $targetRole,
                 'pengajuan_baru',
                 'Pengajuan Baru: ' . ($jenisIzin->nama_izin ?? 'Izin'),
                 $user->nama_lengkap . ' mengajukan ' . ($jenisIzin->nama_izin ?? 'izin') . '.',

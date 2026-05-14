@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -23,6 +24,11 @@ class RetrainAllModels implements ShouldQueue, ShouldBeUnique
     public function handle(): void
     {
         Log::info("Memulai training model SVM multi-class global...");
+
+        Cache::put('face_training_status', [
+            'phase' => 'training',
+            'message' => 'Memulai training model SVM...',
+        ], 3600);
 
         $approvedUsers = DB::table('data_wajah')
             ->where('is_verified', StatusVerifikasiWajah::APPROVED)
@@ -56,7 +62,13 @@ class RetrainAllModels implements ShouldQueue, ShouldBeUnique
             }
 
             $totalUsers = $output['total_users'] ?? 0;
+            $testAcc = $output['test_accuracy'] ?? 0;
             Log::info("Training model global selesai. Total user: {$totalUsers}");
+
+            Cache::put('face_training_status', [
+                'phase' => 'done',
+                'message' => "Training selesai! {$totalUsers} user, Akurasi: " . round($testAcc * 100, 2) . '%',
+            ], 300);
 
             app(\App\Services\NotifikasiService::class)->kirimKeRole(
                 'hrd',
@@ -67,6 +79,11 @@ class RetrainAllModels implements ShouldQueue, ShouldBeUnique
 
         } catch (\Exception $e) {
             Log::error("Training model global GAGAL: " . $e->getMessage());
+
+            Cache::put('face_training_status', [
+                'phase' => 'error',
+                'message' => 'Training gagal: ' . $e->getMessage(),
+            ], 300);
             
             app(\App\Services\NotifikasiService::class)->kirimKeRole(
                 'hrd',

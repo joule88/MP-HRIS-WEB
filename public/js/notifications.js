@@ -27,6 +27,7 @@ function initSweetAlerts() {
     if (swalData) {
         const successMessage = swalData.getAttribute('data-success');
         const errorMessage = swalData.getAttribute('data-error');
+        const warningMessage = swalData.getAttribute('data-warning');
 
         if (successMessage && successMessage !== '') {
             showSuccess(successMessage);
@@ -36,6 +37,17 @@ function initSweetAlerts() {
         if (errorMessage && errorMessage !== '') {
             showError(errorMessage);
             swalData.setAttribute('data-error', '');
+        }
+
+        if (warningMessage && warningMessage !== '') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Peringatan',
+                text: warningMessage,
+                confirmButtonColor: '#f59e0b',
+                confirmButtonText: 'OK'
+            });
+            swalData.setAttribute('data-warning', '');
         }
 
         const validationErrors = swalData.getAttribute('data-errors');
@@ -198,28 +210,7 @@ function updateBadgeUI(count) {
     }
 }
 
-function confirmDelete(id) {
-    Swal.fire({
-        title: 'Apakah Anda yakin?',
-        text: "Data ini akan dihapus secara permanen.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Ya, hapus saja!',
-        cancelButtonText: 'Batal',
-        reverseButtons: true
-    }).then((result) => {
-        if (result.isConfirmed) {
-            const form = document.getElementById('delete-form-' + id);
-            if (form) {
-                form.submit();
-            } else {
-                console.error('Form hapus tidak ditemukan untuk ID:', id);
-            }
-        }
-    });
-}
+
 
 function confirmAction(event, formId, message, confirmBtnColor = '#3085d6', confirmBtnText = 'Ya, lanjutkan!') {
     event.preventDefault();
@@ -238,7 +229,7 @@ function confirmAction(event, formId, message, confirmBtnColor = '#3085d6', conf
         if (result.isConfirmed) {
             const form = document.getElementById(formId);
             if (form) {
-                form.submit();
+                form.requestSubmit();
             } else {
                 console.error('Form tidak ditemukan:', formId);
             }

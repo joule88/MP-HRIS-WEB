@@ -20,7 +20,7 @@ class PegawaiController extends Controller
         $user = auth()->user();
         $isGlobalAdmin = $user->isGlobalAdmin();
 
-        $query = User::with(['divisi', 'jabatan', 'kantor', 'roles'])->bukanHrd();
+        $query = User::with(['divisi', 'jabatan', 'kantor', 'roles']);
 
         if (!$isGlobalAdmin) {
             $query->where('id_kantor', $user->id_kantor);
@@ -28,6 +28,12 @@ class PegawaiController extends Controller
 
         if ($request->filled('filter_jabatan')) {
             $query->where('id_jabatan', $request->filter_jabatan);
+        }
+
+        if ($request->filled('filter_role')) {
+            $query->whereHas('roles', function ($q) use ($request) {
+                $q->where('detail_user_roles.id_role', $request->filter_role);
+            });
         }
 
         if ($request->filled('filter_kantor')) {
@@ -50,18 +56,14 @@ class PegawaiController extends Controller
 
         $pegawai = $query->latest()->paginate(10)->withQueryString();
 
-        $allKantorQuery = Kantor::withCount([
-            'users as total_pegawai' => function ($q) {
-                $q->bukanHrd();
-            }
-        ]);
+        $allKantorQuery = Kantor::withCount('users as total_pegawai');
         if (!$isGlobalAdmin) {
             $allKantorQuery->where('id_kantor', $user->id_kantor);
-            $totalActive = User::bukanHrd()->where('id_kantor', $user->id_kantor)->where('status_aktif', 1)->count();
-            $totalPegawaiStats = User::bukanHrd()->where('id_kantor', $user->id_kantor)->count();
+            $totalActive = User::where('id_kantor', $user->id_kantor)->where('status_aktif', 1)->count();
+            $totalPegawaiStats = User::where('id_kantor', $user->id_kantor)->count();
         } else {
-            $totalActive = User::bukanHrd()->where('status_aktif', 1)->count();
-            $totalPegawaiStats = User::bukanHrd()->count();
+            $totalActive = User::where('status_aktif', 1)->count();
+            $totalPegawaiStats = User::count();
         }
         $allKantor = $allKantorQuery->get();
 
@@ -72,8 +74,9 @@ class PegawaiController extends Controller
         ];
 
         $allJabatan = Jabatan::all();
+        $allRoles = Role::all();
 
-        return view('pegawai.index', compact('pegawai', 'stats', 'allJabatan', 'allKantor'));
+        return view('pegawai.index', compact('pegawai', 'stats', 'allJabatan', 'allKantor', 'allRoles'));
     }
 
     private function generateIdKaryawan($tglBergabung, $idDivisi, $idJabatan)
@@ -129,27 +132,40 @@ class PegawaiController extends Controller
 
     public function store(StorePegawaiRequest $request)
     {
-        $data = $request->validated();
+        try {
+            $data = $request->validated();
 
-        if ($request->hasFile('foto')) {
-            $data['foto'] = $request->file('foto')->store('foto-profil', 'public');
+            if ($request->hasFile('foto')) {
+                $data['foto'] = $request->file('foto')->store('foto-profil', 'public');
+            }
+
+            $tglBergabung = $data['tgl_bergabung'] ?? now()->toDateString();
+            $data['nik'] = $this->generateIdKaryawan($tglBergabung, $data['id_divisi'], $data['id_jabatan']);
+
+            $existingNik = User::withTrashed()->where('nik', $data['nik'])->exists();
+            if ($existingNik) {
+                \Illuminate\Support\Facades\Log::warning("NIK duplikat terdeteksi: {$data['nik']}");
+                return redirect()->back()->withInput()->with('error', 'Gagal generate NIK unik. Silakan coba lagi.');
+            }
+
+            $data['password'] = Hash::make('Mpg123!');
+            $data['status_aktif'] = 1;
+            $data['sisa_cuti'] = 12;
+
+            $user = User::create($data);
+
+            if ($request->filled('id_role')) {
+                $user->roles()->attach($request->id_role);
+            }
+
+            \Illuminate\Support\Facades\Log::info("Pegawai baru berhasil dibuat: ID={$user->id}, NIK={$data['nik']}, Nama={$data['nama_lengkap']}");
+
+            return redirect()->route('pegawai.index')->with('success', 'Pegawai baru berhasil ditambahkan.');
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Gagal menambahkan pegawai: " . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Gagal menambahkan pegawai: ' . $e->getMessage());
         }
-
-        // Generate ID Karyawan Otomatis
-        $tglBergabung = $data['tgl_bergabung'] ?? now()->toDateString();
-        $data['nik'] = $this->generateIdKaryawan($tglBergabung, $data['id_divisi'], $data['id_jabatan']);
-
-        $data['password'] = Hash::make('Mpg123!');
-        $data['status_aktif'] = 1;
-        $data['sisa_cuti'] = 12;
-
-        $user = User::create($data);
-
-        if ($request->filled('id_role')) {
-            $user->roles()->attach($request->id_role);
-        }
-
-        return redirect()->route('pegawai.index')->with('success', 'Pegawai baru berhasil ditambahkan.');
     }
 
     public function update(UpdatePegawaiRequest $request, $id)

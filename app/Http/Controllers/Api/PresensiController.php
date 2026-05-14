@@ -263,7 +263,7 @@ class PresensiController extends Controller
                             $pulang->addDay();
                         }
                         
-                        $diffMinutes = $pulang->diffInMinutes($masuk);
+                        $diffMinutes = abs($pulang->diffInMinutes($masuk));
                         $hours = floor($diffMinutes / 60);
                         $minutes = $diffMinutes % 60;
                         $totalJam = $hours . 'j ' . $minutes . 'm';

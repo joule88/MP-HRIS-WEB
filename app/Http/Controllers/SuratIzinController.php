@@ -24,16 +24,20 @@ class SuratIzinController extends Controller
     {
         $user = Auth::user();
         $isGlobalAdmin = $user->isGlobalAdmin();
+        $isSuperAdmin = $user->isSuperAdmin();
 
         $query = SuratIzin::with(['user', 'pengajuanIzin.jenisIzin', 'approvals.approver']);
 
-        if (!$isGlobalAdmin) {
-            if (!$user->roles->contains('nama_role', 'manajer')) {
+        if (!$isSuperAdmin) {
+            $isManager = $user->roles->contains('nama_role', 'manager');
+            if (!$isManager) {
                 $query->where('status_surat', '!=', StatusSurat::MENUNGGU_MANAJER);
             }
-            $query->whereHas('user', function ($q) use ($user) {
-                $q->where('id_kantor', $user->id_kantor);
-            });
+            if (!$isGlobalAdmin) {
+                $query->whereHas('user', function ($q) use ($user) {
+                    $q->where('id_kantor', $user->id_kantor);
+                });
+            }
         }
 
         if ($request->filled('status')) {
@@ -76,7 +80,7 @@ class SuratIzinController extends Controller
         // Cegah user yang sama menandatangani di dua tahap berbeda
         $sudahApprove = $surat->approvals->contains('id_approver', $user->id);
 
-        if (!$sudahApprove && $surat->status_surat === StatusSurat::MENUNGGU_MANAJER && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
+        if (!$sudahApprove && $surat->status_surat === StatusSurat::MENUNGGU_MANAJER && ($user->roles->contains('nama_role', 'manager') || $isGlobalAdmin)) {
             $canApprove = true;
             $tahapApproval = 1;
         } elseif (!$sudahApprove && $surat->status_surat === StatusSurat::MENUNGGU_HRD && ($user->roles->contains('nama_role', 'hrd') || $isGlobalAdmin)) {
@@ -116,7 +120,7 @@ class SuratIzinController extends Controller
                 return redirect()->back()->with('error', 'Anda sudah menyetujui surat ini sebelumnya dan tidak dapat menandatangani di posisi lain.');
             }
 
-            if ($surat->status_surat === StatusSurat::MENUNGGU_MANAJER && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
+            if ($surat->status_surat === StatusSurat::MENUNGGU_MANAJER && ($user->roles->contains('nama_role', 'manager') || $isGlobalAdmin)) {
                 $tahap = 1;
             } elseif ($surat->status_surat === StatusSurat::MENUNGGU_HRD && ($user->roles->contains('nama_role', 'hrd') || $isGlobalAdmin)) {
                 $tahap = 2;
@@ -160,6 +164,14 @@ class SuratIzinController extends Controller
                     'Surat izin Anda telah disetujui Manajer dan sedang menunggu persetujuan HRD.',
                     ['id_surat' => $surat->id_surat]
                 );
+
+                app(NotifikasiService::class)->kirimKeRole(
+                    'hrd',
+                    'izin_proses',
+                    'Surat Cuti Baru',
+                    'Surat cuti ' . $surat->user->nama_lengkap . ' telah disetujui Manajer dan menunggu persetujuan HRD.',
+                    ['id_surat' => $surat->id_surat]
+                );
             } else {
                 $statusLabel = 'Disetujui';
                 app(NotifikasiService::class)->kirim(
@@ -172,10 +184,10 @@ class SuratIzinController extends Controller
             }
 
             broadcast(new SuratIzinUpdated(
-                $surat->id_user,
-                $surat->id_surat,
+                (int) $surat->id_user,
+                (int) $surat->id_surat,
                 $surat->status_surat,
-                $tahap,
+                (int) $tahap,
                 'Surat izin ' . ($tahap === 1 ? 'disetujui Manajer' : 'disetujui sepenuhnya') . '.'
             ));
 
@@ -214,7 +226,7 @@ class SuratIzinController extends Controller
                 return redirect()->back()->with('error', 'Anda sudah menyetujui surat ini sebelumnya dan tidak dapat menolak di posisi lain.');
             }
 
-            if ($surat->status_surat === StatusSurat::MENUNGGU_MANAJER && ($user->roles->contains('nama_role', 'manajer') || $isGlobalAdmin)) {
+            if ($surat->status_surat === StatusSurat::MENUNGGU_MANAJER && ($user->roles->contains('nama_role', 'manager') || $isGlobalAdmin)) {
                 $tahap = 1;
             } elseif ($surat->status_surat === StatusSurat::MENUNGGU_HRD && ($user->roles->contains('nama_role', 'hrd') || $isGlobalAdmin)) {
                 $tahap = 2;
@@ -252,10 +264,10 @@ class SuratIzinController extends Controller
             );
 
             broadcast(new SuratIzinUpdated(
-                $surat->id_user,
-                $surat->id_surat,
+                (int) $surat->id_user,
+                (int) $surat->id_surat,
                 StatusSurat::DITOLAK,
-                $tahap,
+                (int) $tahap,
                 'Surat izin ditolak.'
             ));
 

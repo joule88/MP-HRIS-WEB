@@ -14,7 +14,7 @@ class StoreJadwalRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tanggal_mulai'  => ['required', 'date'],
+            'tanggal_mulai'  => ['required', 'date', 'after_or_equal:today'],
             'tanggal_selesai' => ['required', 'date', 'after_or_equal:tanggal_mulai'],
             'id_shift'       => ['required', 'exists:shift_kerja,id_shift'],
             'user_ids'       => ['required', 'array', 'min:1'],
@@ -26,6 +26,7 @@ class StoreJadwalRequest extends FormRequest
     {
         return [
             'tanggal_mulai.required'      => 'Tanggal mulai wajib diisi.',
+            'tanggal_mulai.after_or_equal' => 'Tanggal mulai tidak boleh di masa lalu (sebelum hari ini).',
             'tanggal_selesai.required'    => 'Tanggal selesai wajib diisi.',
             'tanggal_selesai.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
             'id_shift.required'           => 'Shift kerja wajib dipilih.',

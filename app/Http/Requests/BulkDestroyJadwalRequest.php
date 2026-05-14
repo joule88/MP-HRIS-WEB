@@ -14,7 +14,7 @@ class BulkDestroyJadwalRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tanggal_mulai'  => ['required', 'date'],
+            'tanggal_mulai'  => ['required', 'date', 'after_or_equal:today'],
             'tanggal_selesai' => ['required', 'date', 'after_or_equal:tanggal_mulai'],
             'user_ids'       => ['required', 'array', 'min:1'],
             'user_ids.*'     => ['exists:users,id'],
@@ -25,6 +25,7 @@ class BulkDestroyJadwalRequest extends FormRequest
     {
         return [
             'tanggal_mulai.required'         => 'Tanggal mulai wajib diisi.',
+            'tanggal_mulai.after_or_equal'   => 'Tanggal mulai tidak boleh di masa lalu (sebelum hari ini).',
             'tanggal_selesai.required'        => 'Tanggal selesai wajib diisi.',
             'tanggal_selesai.after_or_equal'  => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
             'user_ids.required'              => 'Pilih minimal 1 pegawai.',

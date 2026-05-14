@@ -74,10 +74,11 @@ document.addEventListener('DOMContentLoaded', function () {
             position: 'top-end',
             icon: 'info',
             title: title,
-            text: message,
+            html: '<div style="font-size: 0.875rem; color: #64748b; margin-top: 0.25rem;">' + message + '</div>',
             showConfirmButton: false,
             timer: 4000,
             timerProgressBar: true,
+            padding: '1em',
         });
     }
 

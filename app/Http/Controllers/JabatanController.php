@@ -29,12 +29,16 @@ class JabatanController extends Controller
 
     public function destroy($id)
     {
+        if (\App\Models\User::where('id_jabatan', $id)->exists()) {
+            return redirect()->back()->with('error', 'Jabatan tidak bisa dihapus karena masih digunakan oleh data pegawai.');
+        }
+
         try {
             Jabatan::findOrFail($id)->delete();
             return redirect()->back()->with('success', 'Jabatan berhasil dihapus.');
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->getCode() === '23000') {
-                return redirect()->back()->with('error', 'Jabatan tidak bisa dihapus karena masih digunakan oleh data pegawai.');
+                return redirect()->back()->with('error', 'Jabatan tidak bisa dihapus karena masih terhubung dengan data lain.');
             }
             throw $e;
         }

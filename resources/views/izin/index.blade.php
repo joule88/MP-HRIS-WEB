@@ -344,12 +344,32 @@
         }
 
         function submitRejectWithAlasan() {
-            const alasan = prompt('Masukkan alasan penolakan (opsional):');
-            if (alasan === null) return;
-            const inputAlasan = document.getElementById('input-alasan-penolakan');
-            if (inputAlasan) inputAlasan.value = alasan;
-            const form = document.getElementById('form-reject-izin');
-            if (form) form.submit();
+            // Tutup modal detail terlebih dahulu untuk menghindari focus trap
+            window.dispatchEvent(new CustomEvent('close-modal', { detail: 'detail-izin' }));
+
+            setTimeout(() => {
+                Swal.fire({
+                    title: 'Tolak Pengajuan',
+                    text: 'Masukkan alasan penolakan (opsional):',
+                    input: 'textarea',
+                    inputPlaceholder: 'Ketik alasan di sini...',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Ya, Tolak',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const inputAlasan = document.getElementById('input-alasan-penolakan');
+                        if (inputAlasan) inputAlasan.value = result.value || '';
+                        const form = document.getElementById('form-reject-izin');
+                        if (form) form.requestSubmit();
+                    } else {
+                        // Jika dibatalkan, buka kembali modal detail
+                        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'detail-izin' }));
+                    }
+                });
+            }, 150); // Jeda singkat agar animasi tutup modal selesai
         }
 
         function initCreateIzinForm() {

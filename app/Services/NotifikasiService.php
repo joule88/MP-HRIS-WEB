@@ -28,7 +28,8 @@ class NotifikasiService
             $unreadCount = Notifikasi::where('id_user', $idUser)->where('is_read', false)->count();
             broadcast(new NotifikasiCreated($idUser, $judul, $pesan, $tipe, $unreadCount));
 
-            $this->sendPushNotification($idUser, $judul, $pesan, $data);
+            $data['tipe'] = $tipe;
+            \App\Jobs\SendFcmPushNotification::dispatch($idUser, $judul, $pesan, $data);
         } catch (\Exception $e) {
             Log::error('NotifikasiService::kirim gagal: ' . $e->getMessage());
         }
@@ -39,15 +40,7 @@ class NotifikasiService
      */
     public function kirimBroadcast(string $tipe, string $judul, string $pesan, array $data = []): void
     {
-        $users = User::where('status_aktif', 1)
-            ->whereDoesntHave('roles', function ($q) {
-                $q->whereIn('nama_role', ['super_admin']);
-            })
-            ->pluck('id');
-
-        foreach ($users as $idUser) {
-            $this->kirim($idUser, $tipe, $judul, $pesan, $data);
-        }
+        \App\Jobs\BroadcastNotifikasiJob::dispatch($tipe, $judul, $pesan, $data);
     }
 
     /**
@@ -70,7 +63,7 @@ class NotifikasiService
      * Kirim push notification ke device FCM user via FCM HTTP v1 API.
      * Token yang sudah tidak valid (UNREGISTERED) otomatis dihapus dari DB.
      */
-    private function sendPushNotification(int $idUser, string $judul, string $pesan, array $data = []): void
+    public function sendPushNotification(int $idUser, string $judul, string $pesan, array $data = []): void
     {
         $tokens = DeviceToken::where('id_user', $idUser)->get();
         if ($tokens->isEmpty()) {
@@ -97,6 +90,7 @@ class NotifikasiService
                             'notification' => ['title' => $judul, 'body' => $pesan],
                             'data'         => array_map('strval', $data),
                             'android'      => [
+                                'priority'     => 'HIGH',
                                 'notification' => [
                                     'channel_id'   => 'hris_channel',
                                     'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
@@ -125,35 +119,38 @@ class NotifikasiService
 
     /**
      * Ambil access token Google OAuth2 menggunakan Service Account JWT.
+     * Dicache selama 50 menit (token OAuth biasanya berlaku 1 jam).
      */
     private function getFcmAccessToken(): ?string
     {
-        try {
-            $credPath    = base_path(env('FIREBASE_CREDENTIALS'));
-            $credentials = json_decode(file_get_contents($credPath), true);
-            $now = time();
+        return \Illuminate\Support\Facades\Cache::remember('fcm_access_token', 3000, function () {
+            try {
+                $credPath    = base_path(env('FIREBASE_CREDENTIALS'));
+                $credentials = json_decode(file_get_contents($credPath), true);
+                $now = time();
 
-            $header  = rtrim(strtr(base64_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT'])), '+/', '-_'), '=');
-            $payload = rtrim(strtr(base64_encode(json_encode([
-                'iss'   => $credentials['client_email'],
-                'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
-                'aud'   => 'https://oauth2.googleapis.com/token',
-                'iat'   => $now,
-                'exp'   => $now + 3600,
-            ])), '+/', '-_'), '=');
+                $header  = rtrim(strtr(base64_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT'])), '+/', '-_'), '=');
+                $payload = rtrim(strtr(base64_encode(json_encode([
+                    'iss'   => $credentials['client_email'],
+                    'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+                    'aud'   => 'https://oauth2.googleapis.com/token',
+                    'iat'   => $now,
+                    'exp'   => $now + 3600,
+                ])), '+/', '-_'), '=');
 
-            openssl_sign("$header.$payload", $sig, $credentials['private_key'], OPENSSL_ALGO_SHA256);
-            $jwt = "$header.$payload." . rtrim(strtr(base64_encode($sig), '+/', '-_'), '=');
+                openssl_sign("$header.$payload", $sig, $credentials['private_key'], OPENSSL_ALGO_SHA256);
+                $jwt = "$header.$payload." . rtrim(strtr(base64_encode($sig), '+/', '-_'), '=');
 
-            $resp = \Illuminate\Support\Facades\Http::asForm()->withoutVerifying()->post('https://oauth2.googleapis.com/token', [
-                'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                'assertion'  => $jwt,
-            ]);
+                $resp = \Illuminate\Support\Facades\Http::asForm()->withoutVerifying()->post('https://oauth2.googleapis.com/token', [
+                    'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                    'assertion'  => $jwt,
+                ]);
 
-            return $resp->json('access_token');
-        } catch (\Exception $e) {
-            Log::error('FCM Token error: ' . $e->getMessage());
-            return null;
-        }
+                return $resp->json('access_token');
+            } catch (\Exception $e) {
+                Log::error('FCM Token error: ' . $e->getMessage());
+                return null;
+            }
+        });
     }
 }

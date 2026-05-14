@@ -51,7 +51,7 @@ class ProcessFaceEnrollment implements ShouldQueue
                     fopen($absVideoPath, 'r'),
                     'enrollment.mp4'
                 )
-                ->post(config('services.flask.url') . '/extract-and-embed', [
+                ->post(config('services.flask.url') . '/extract-frames', [
                     'user_id' => (string) $this->userId,
                     'target_frames' => 200,
                 ]);
@@ -63,29 +63,17 @@ class ProcessFaceEnrollment implements ShouldQueue
             $output = $response->json();
 
             if (!isset($output['status']) || $output['status'] !== 'success') {
-                throw new \Exception("Extract & embed error: " . ($output['message'] ?? 'Unknown'));
+                throw new \Exception("Extract frames error: " . ($output['message'] ?? 'Unknown'));
             }
 
             $jumlahFrame = $output['total_extracted'] ?? 0;
-            $embedding = $output['embedding'] ?? null;
 
-            $updateData = [
+            DB::table('data_wajah')->where('id_user', $this->userId)->update([
                 'jumlah_frame' => $jumlahFrame,
                 'is_verified' => StatusVerifikasiWajah::PENDING,
-            ];
+            ]);
 
-            if ($embedding && is_array($embedding)) {
-                $updateData['face_embeddings'] = json_encode($embedding);
-                $updateData['jumlah_embedding'] = $jumlahFrame;
-                $updateData['embedding_generated_at'] = now();
-                Log::info("Face enrollment: embedding berhasil di-generate untuk user {$this->userId}. Dimensi: " . count($embedding));
-            } else {
-                Log::warning("Face enrollment: frame berhasil di-extract tapi embedding tidak tersedia untuk user {$this->userId}.");
-            }
-
-            DB::table('data_wajah')->where('id_user', $this->userId)->update($updateData);
-
-            Log::info("Face enrollment: extract & embed berhasil untuk user {$this->userId}. Frames: {$jumlahFrame}. Menunggu HRD approve.");
+            Log::info("Face enrollment: extract frames berhasil untuk user {$this->userId}. Frames: {$jumlahFrame}. Menunggu HRD approve.");
 
         } catch (\Exception $e) {
             Log::error("Face enrollment GAGAL untuk user {$this->userId}: " . $e->getMessage());

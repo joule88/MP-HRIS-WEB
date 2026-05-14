@@ -29,12 +29,20 @@ class KantorController extends Controller
 
     public function destroy($id)
     {
+        if (\App\Models\User::where('id_kantor', $id)->exists()) {
+            return redirect()->back()->with('error', 'Kantor tidak bisa dihapus karena masih digunakan oleh data pegawai.');
+        }
+
+        if (\App\Models\HariLibur::where('id_kantor', $id)->exists()) {
+            return redirect()->back()->with('error', 'Kantor tidak bisa dihapus karena masih terkait dengan data hari libur.');
+        }
+
         try {
             Kantor::findOrFail($id)->delete();
             return redirect()->back()->with('success', 'Data kantor berhasil dihapus.');
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->getCode() === '23000') {
-                return redirect()->back()->with('error', 'Kantor tidak bisa dihapus karena masih digunakan oleh data pegawai.');
+                return redirect()->back()->with('error', 'Kantor tidak bisa dihapus karena masih terhubung dengan data lain.');
             }
             throw $e;
         }

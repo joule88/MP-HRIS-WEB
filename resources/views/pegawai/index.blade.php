@@ -54,6 +54,17 @@
                     </div>
 
                     <div class="w-full md:w-44">
+                        <x-select name="filter_role" class="!mb-0 h-10" onchange="this.form.submit()">
+                            <option value="">Semua Akses (Role)</option>
+                            @foreach($allRoles as $r)
+                                <option value="{{ $r->id_role }}" {{ request('filter_role') == $r->id_role ? 'selected' : '' }}>
+                                    {{ ucwords(str_replace('_', ' ', $r->nama_role)) }}
+                                </option>
+                            @endforeach
+                        </x-select>
+                    </div>
+
+                    <div class="w-full md:w-44">
                         <x-select name="filter_kantor" class="!mb-0 h-10" onchange="this.form.submit()">
                             <option value="">Semua Kantor</option>
                             @foreach($allKantor as $k)
@@ -74,7 +85,7 @@
                         </x-select>
                     </div>
 
-                    @if(request()->hasAny(['filter_jabatan', 'filter_kantor', 'filter_status', 'search']))
+                    @if(request()->hasAny(['filter_jabatan', 'filter_role', 'filter_kantor', 'filter_status', 'search']))
                         <a href="{{ route('pegawai.index') }}"
                             class="flex h-10 items-center px-4 bg-slate-100 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-200 transition-all border border-slate-200">
                             Reset

@@ -373,15 +373,27 @@
             x-data="{ 
                 tglMulai: '', 
                 tglSelesai: '',
+                filterKantor: '',
+                filterDivisi: '',
                 selectAll: true, 
+                getVisibleCheckboxes() {
+                    let checkboxes = document.querySelectorAll('#form-bulk-delete .user-checkbox');
+                    return Array.from(checkboxes).filter(cb => {
+                        let item = cb.closest('.user-checkbox-item');
+                        let k = item.getAttribute('data-kantor');
+                        let d = item.getAttribute('data-divisi');
+                        let showKantor = this.filterKantor === '' || this.filterKantor == k;
+                        let showDivisi = this.filterDivisi === '' || this.filterDivisi == d;
+                        return showKantor && showDivisi;
+                    });
+                },
                 toggleAll() { 
-                    let checkboxes = document.querySelectorAll('.user-checkbox');
-                    checkboxes.forEach(cb => cb.checked = this.selectAll);
+                    this.getVisibleCheckboxes().forEach(cb => cb.checked = this.selectAll);
                 },
                 updateSelectAll() {
-                    let checkboxes = document.querySelectorAll('.user-checkbox');
-                    let checkedBoxes = document.querySelectorAll('.user-checkbox:checked');
-                    this.selectAll = checkboxes.length === checkedBoxes.length;
+                    let visible = this.getVisibleCheckboxes();
+                    let checked = visible.filter(cb => cb.checked);
+                    this.selectAll = visible.length > 0 && visible.length === checked.length;
                 }
             }"
         >
@@ -392,24 +404,41 @@
                 </div>
                 
                 <div class="flex flex-col md:flex-row gap-4">
-                    <div class="flex-1"><x-date-input label="Tanggal Mulai" name="tanggal_mulai" required class="mb-0" x-model="tglMulai" x-on:change="if(tglMulai) { $refs.endInput.min = tglMulai; if(tglSelesai && tglSelesai < tglMulai) tglSelesai = tglMulai; }" x-ref="startInput" /></div>
-                    <div class="flex-1"><x-date-input label="Tanggal Selesai" name="tanggal_selesai" required class="mb-0" x-model="tglSelesai" x-on:change="if(tglSelesai) { $refs.startInput.max = tglSelesai; if(tglMulai && tglMulai > tglSelesai) tglMulai = tglSelesai; }" x-ref="endInput" /></div>
+                    <div class="flex-1"><x-date-input label="Tanggal Mulai" name="tanggal_mulai" required class="mb-0" x-model="tglMulai" x-on:change="if(tglMulai) { $refs.endInput.min = tglMulai; if(tglSelesai && tglSelesai < tglMulai) tglSelesai = tglMulai; }" x-ref="startInput" min="{{ date('Y-m-d') }}" /></div>
+                    <div class="flex-1"><x-date-input label="Tanggal Selesai" name="tanggal_selesai" required class="mb-0" x-model="tglSelesai" x-on:change="if(tglSelesai) { $refs.startInput.max = tglSelesai; if(tglMulai && tglMulai > tglSelesai) tglMulai = tglSelesai; }" x-ref="endInput" min="{{ date('Y-m-d') }}" /></div>
                 </div>
 
                 <div class="space-y-2">
-                    <div class="flex items-center justify-between mb-2">
+                    <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-2">
                         <label class="block text-sm font-semibold text-slate-700">Pilih Pegawai <span class="text-red-500">*</span></label>
-                        <div class="flex items-center gap-3">
-                            <label class="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer hover:bg-slate-100 px-3 py-1.5 rounded-lg transition-all active:scale-95">
-                                <x-checkbox x-model="selectAll" @change="toggleAll" class="w-5 h-5 cursor-pointer text-primary border-slate-300 rounded focus:ring-primary" />
-                                <span>Pilih Semua</span>
-                            </label>
+                        <div class="flex gap-2">
+                            <x-filter-select x-model="filterKantor" @change="setTimeout(() => updateSelectAll(), 50)" class="py-1.5 text-xs">
+                                <option value="">Semua Kantor</option>
+                                @foreach($kantor as $k)
+                                    <option value="{{ $k->id_kantor }}">{{ $k->nama_kantor }}</option>
+                                @endforeach
+                            </x-filter-select>
+
+                            <x-filter-select x-model="filterDivisi" @change="setTimeout(() => updateSelectAll(), 50)" class="py-1.5 text-xs">
+                                <option value="">Semua Divisi</option>
+                                @foreach($divisi as $d)
+                                    <option value="{{ $d->id_divisi }}">{{ $d->nama_divisi }}</option>
+                                @endforeach
+                            </x-filter-select>
                         </div>
+                    </div>
+                    <div class="flex items-center justify-end mb-2">
+                        <label class="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer hover:bg-slate-100 px-3 py-1.5 rounded-lg transition-all active:scale-95">
+                            <x-checkbox x-model="selectAll" @change="toggleAll" class="w-5 h-5 cursor-pointer text-primary border-slate-300 rounded focus:ring-primary" />
+                            <span>Pilih Semua (yang tampil)</span>
+                        </label>
                     </div>
                     
                     <div class="border border-slate-200 rounded-xl max-h-[300px] overflow-y-auto bg-slate-50/50 p-2 space-y-2 shadow-inner custom-scrollbar">
                         @foreach($pegawai as $p)
-                            <label class="relative flex items-center p-3 rounded-lg border-2 border-transparent bg-white shadow-sm cursor-pointer hover:border-slate-300 hover:bg-slate-50 transition-all [&:has(:checked)]:border-primary [&:has(:checked)]:bg-blue-50/50 group">
+                            <label x-show="(filterKantor === '' || filterKantor == '{{ $p->id_kantor }}') && (filterDivisi === '' || filterDivisi == '{{ $p->id_divisi }}')"
+                                data-kantor="{{ $p->id_kantor }}" data-divisi="{{ $p->id_divisi }}"
+                                class="user-checkbox-item relative flex items-center p-3 rounded-lg border-2 border-transparent bg-white shadow-sm cursor-pointer hover:border-slate-300 hover:bg-slate-50 transition-all [&:has(:checked)]:border-primary [&:has(:checked)]:bg-blue-50/50 group">
                                 <input type="checkbox" name="user_ids[]" value="{{ $p->id }}" checked @change="updateSelectAll"
                                     class="user-checkbox peer sr-only">
                                 
@@ -419,7 +448,13 @@
 
                                 <div class="flex-1">
                                     <div class="font-bold text-slate-800 text-sm group-has-[:checked]:text-primary">{{ $p->nama_lengkap }}</div>
-                                    <div class="text-xs text-slate-500 font-mono">{{ $p->nik }}</div>
+                                    <div class="text-xs text-slate-500 mt-0.5">
+                                        <span class="font-mono bg-slate-100 px-1.5 py-0.5 rounded">{{ $p->nik }}</span>
+                                        <span class="mx-1">•</span>
+                                        <span>{{ $p->jabatan->nama_jabatan ?? '-' }}</span>
+                                        <span class="mx-1">•</span>
+                                        <span>{{ $p->kantor->nama_kantor ?? '-' }}</span>
+                                    </div>
                                 </div>
 
                                 <div class="flex-shrink-0 ml-3 text-slate-300 group-has-[:checked]:text-primary transition-colors relative flex items-center justify-center">

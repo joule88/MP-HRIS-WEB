@@ -118,6 +118,7 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
 
     Route::get('/face-approval', [FaceApprovalController::class, 'index'])->name('face.index');
     Route::post('/face-approval/reextract-all', [FaceApprovalController::class, 'reextractAll'])->name('face.reextract_all');
+    Route::get('/face-approval/training-status', [FaceApprovalController::class, 'trainingStatus'])->name('face.training_status');
     Route::post('/face-approval/migrate-embeddings', [FaceApprovalController::class, 'migrateEmbeddings'])->name('face.migrate_embeddings');
     Route::get('/face-approval/photo/{userId}/{pose}', [FaceApprovalController::class, 'showPhoto'])->name('face.photo');
     Route::get('/face-approval/frame/{userId}/{frameIndex}', [FaceApprovalController::class, 'showFrame'])->name('face.frame');

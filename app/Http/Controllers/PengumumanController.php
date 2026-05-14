@@ -16,6 +16,7 @@ class PengumumanController extends Controller
     {
         $pengumuman = Pengumuman::with('pembuat')
             ->orderBy('tanggal', 'desc')
+            ->orderBy('created_at', 'desc')
             ->paginate(10);
 
         $title = 'Pengumuman';

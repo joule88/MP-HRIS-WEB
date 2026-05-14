@@ -77,62 +77,10 @@ class FaceRecognitionService
     }
 
     /**
-     * Verifikasi wajah menggunakan pendekatan embedding + cosine similarity.
-     * File dikirim ke Flask untuk generate embedding, lalu dibandingkan dengan database.
+     * Verifikasi wajah menggunakan SVM (Jalur 2).
+     * File dikirim ke Flask /verify-face untuk prediksi SVM.
      */
     public function verifyFace($userId, UploadedFile $file)
-    {
-        $probeEmbedding = $this->getEmbedding($file);
-
-        $allEmbeddings = DB::table('data_wajah')
-            ->where('is_verified', StatusVerifikasiWajah::APPROVED)
-            ->whereNotNull('face_embeddings')
-            ->get(['id_user', 'face_embeddings']);
-
-        if ($allEmbeddings->isEmpty()) {
-            throw new \Exception('Belum ada data wajah terverifikasi di sistem.');
-        }
-
-        $bestMatch = null;
-        $bestScore = -1;
-
-        foreach ($allEmbeddings as $data) {
-            $storedEmbedding = json_decode($data->face_embeddings, true);
-            if (!is_array($storedEmbedding)) continue;
-
-            $similarity = $this->cosineSimilarity($probeEmbedding, $storedEmbedding);
-
-            if ($similarity > $bestScore) {
-                $bestScore = $similarity;
-                $bestMatch = $data->id_user;
-            }
-        }
-
-        $threshold = 0.6;
-        $isMatch = $bestScore >= $threshold && $bestMatch == $userId;
-
-        $verificationStatus = 'REJECTED';
-        if ($isMatch) {
-            $verificationStatus = 'MATCH';
-        } elseif ($bestScore >= $threshold && $bestMatch != $userId) {
-            $verificationStatus = 'MISMATCH';
-        }
-
-        Log::info("[FaceVerify] User {$userId}: best_match={$bestMatch}, score={$bestScore}, status={$verificationStatus}");
-
-        return [
-            'verified'            => $isMatch,
-            'confidence'          => round($bestScore, 4),
-            'svm_df'              => null,
-            'verification_status' => $verificationStatus,
-            'blur_score'          => $probeEmbedding['blur_score'] ?? null,
-            'predicted_user'      => $bestMatch,
-            'expected_user'       => $userId,
-            'message'             => $isMatch ? 'Wajah cocok' : 'Wajah tidak cocok',
-        ];
-    }
-
-    private function getEmbedding(UploadedFile $file): array
     {
         $isVideo = str_starts_with($file->getMimeType() ?? '', 'video/');
 
@@ -143,52 +91,44 @@ class FaceRecognitionService
                 fopen($file->getRealPath(), 'r'),
                 $isVideo ? 'verify.mp4' : 'verify.jpg'
             )
-            ->post($this->getFlaskUrl() . '/get-embedding', [
+            ->post($this->getFlaskUrl() . '/verify-face', [
+                'user_id' => (string) $userId,
                 'is_video' => $isVideo ? 'true' : 'false',
             ]);
 
         if (!$response->successful()) {
             $body = $response->json();
             $msg = $body['message'] ?? 'Flask ML API tidak merespons.';
-            Log::error("[FaceVerify] Flask /get-embedding error: HTTP {$response->status()} - {$msg}");
-            throw new \Exception("Gagal mengekstrak embedding wajah. {$msg}");
+            Log::error("[FaceVerify] Flask /verify-face error: HTTP {$response->status()} - {$msg}");
+            throw new \Exception("Gagal memverifikasi wajah. {$msg}");
         }
 
-        $output = $response->json();
+        $result = $response->json();
 
-        if (!$output || $output['status'] !== 'success' || !isset($output['embedding'])) {
-            throw new \Exception('Respons embedding tidak valid.');
+        if (!$result || $result['status'] !== 'success') {
+            throw new \Exception($result['message'] ?? 'Respons verifikasi tidak valid.');
         }
 
-        return $output;
-    }
+        Log::info("[FaceVerify] User {$userId}: " . json_encode([
+            'match' => $result['match'],
+            'verification_status' => $result['verification_status'],
+            'confidence' => $result['confidence'],
+            'svm_df' => $result['svm_df'] ?? null,
+            'predicted_user' => $result['predicted_user'] ?? null,
+            'blur_score' => $result['blur_score'] ?? null,
+        ]));
 
-    private function cosineSimilarity(array $embeddingResponse, array $storedEmbedding): float
-    {
-        $a = $embeddingResponse['embedding'] ?? $embeddingResponse;
-        $b = $storedEmbedding;
-
-        if (count($a) !== count($b) || count($a) === 0) {
-            return 0.0;
-        }
-
-        $dotProduct = 0.0;
-        $normA = 0.0;
-        $normB = 0.0;
-
-        for ($i = 0; $i < count($a); $i++) {
-            $dotProduct += $a[$i] * $b[$i];
-            $normA += $a[$i] * $a[$i];
-            $normB += $b[$i] * $b[$i];
-        }
-
-        $normA = sqrt($normA);
-        $normB = sqrt($normB);
-
-        if ($normA == 0 || $normB == 0) {
-            return 0.0;
-        }
-
-        return $dotProduct / ($normA * $normB);
+        return [
+            'verified'            => $result['match'],
+            'confidence'          => $result['confidence'],
+            'svm_df'              => $result['svm_df'] ?? null,
+            'verification_status' => $result['verification_status'],
+            'blur_score'          => $result['blur_score'] ?? null,
+            'predicted_user'      => $result['predicted_user'] ?? null,
+            'expected_user'       => (string) $userId,
+            'approved_ratio'      => $result['approved_ratio'] ?? null,
+            'message'             => $result['message'] ?? ($result['match'] ? 'Wajah cocok' : 'Wajah tidak cocok'),
+        ];
     }
 }
+

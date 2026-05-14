@@ -26,8 +26,57 @@ class LemburController extends Controller
     {
         try {
             $user = Auth::user();
+            $data = $request->validated();
+            $tglLembur = $data['tanggal_lembur'];
+            $jamMulai = $data['jam_mulai'];
+            $jamSelesai = $data['jam_selesai'];
 
-            $this->lemburService->createLembur($user, $request->validated());
+            // 1. Cek bentrok dengan pengajuan lembur lain (Pending/Approved)
+            $overlappingLembur = Lembur::where('id_user', $user->id)
+                ->where('tanggal_lembur', $tglLembur)
+                ->whereIn('id_status', [StatusPengajuan::PENDING, StatusPengajuan::DISETUJUI])
+                ->where(function ($q) use ($jamMulai, $jamSelesai) {
+                    $q->where(function ($q2) use ($jamMulai, $jamSelesai) {
+                        $q2->where('jam_mulai', '<', $jamSelesai)
+                           ->where('jam_selesai', '>', $jamMulai);
+                    });
+                })->exists();
+
+            if ($overlappingLembur) {
+                return ApiResponse::error('Anda sudah memiliki pengajuan lembur lain yang bentrok dengan waktu tersebut.', 400);
+            }
+
+            // 2. Cek bentrok dengan jam kerja (Shift)
+            $jadwal = \App\Models\JadwalKerja::with('shift')
+                ->where('id_user', $user->id)
+                ->where('tanggal', $tglLembur)
+                ->first();
+
+            if ($jadwal && $jadwal->shift) {
+                $shiftMulai = $jadwal->shift->jam_mulai;
+                $shiftSelesai = $jadwal->shift->jam_pulang;
+
+                // Cek apakah jam lembur masuk ke dalam range jam kerja
+                // Syarat lembur: Tidak boleh beririsan dengan jam kerja
+                $isInsideShift = ($jamMulai < $shiftSelesai && $jamSelesai > $shiftMulai);
+
+                if ($isInsideShift) {
+                    return ApiResponse::error("Waktu lembur tidak boleh bentrok dengan jam kerja reguler ({$shiftMulai} - {$shiftSelesai}).", 400);
+                }
+            }
+
+            // 3. Cek apakah ada Izin/Cuti pada hari tersebut
+            $isIzin = \App\Models\PengajuanIzin::where('id_user', $user->id)
+                ->whereIn('id_status', [StatusPengajuan::PENDING, StatusPengajuan::DISETUJUI])
+                ->where('tanggal_mulai', '<=', $tglLembur)
+                ->where('tanggal_selesai', '>=', $tglLembur)
+                ->exists();
+
+            if ($isIzin) {
+                return ApiResponse::error('Anda tidak bisa mengajukan lembur di hari saat Anda sedang Izin/Cuti.', 400);
+            }
+
+            $this->lemburService->createLembur($user, $data);
 
             app(NotifikasiService::class)->kirimKeRole(
                 'hrd',

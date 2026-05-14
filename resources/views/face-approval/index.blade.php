@@ -101,11 +101,27 @@
                     <form id="reextract-form" action="{{ route('face.reextract_all') }}" method="POST" class="hidden">
                         @csrf
                     </form>
-                    <button onclick="confirmAction(event, 'reextract-form', 'Apakah Anda yakin ingin mengekstrak ulang seluruh video enrollment lama? Proses ini memakan waktu beberapa menit, dan akan me-retrain model global secara otomatis.', '#3b82f6', 'Ya, Lanjutkan!')"
+                    <button id="reextractBtn" onclick="confirmAction(event, 'reextract-form', 'Sistem akan mengecek user yang belum punya frame, extract jika perlu, lalu retrain model global. Proses ini memakan waktu beberapa menit.', '#3b82f6', 'Ya, Lanjutkan!')"
                         class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors shadow-sm">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                        Re-extract & Retrain All
+                        Sync & Retrain All
                     </button>
+                </div>
+
+                <div id="trainingProgress" class="mt-3 hidden">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <svg class="w-5 h-5 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span id="trainingPhase" class="text-sm font-semibold text-blue-800">Memproses...</span>
+                        </div>
+                        <div class="w-full bg-blue-200 rounded-full h-2.5">
+                            <div id="trainingBar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                        <p id="trainingMessage" class="text-xs text-blue-600 mt-1.5"></p>
+                    </div>
                 </div>
             </div>
 
@@ -310,5 +326,84 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') closeFacePreview();
         });
+
+        let pollingInterval = null;
+
+        // Cek status saat halaman pertama kali dimuat
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('{{ route("face.training_status") }}')
+                .then(r => r.json())
+                .then(data => {
+                    const phase = data.phase || 'idle';
+                    if (phase === 'extracting' || phase === 'training') {
+                        startPolling();
+                    }
+                })
+                .catch(() => {});
+        });
+
+        document.getElementById('reextract-form').addEventListener('submit', function() {
+            startPolling();
+        });
+
+        function startPolling() {
+            const progressEl = document.getElementById('trainingProgress');
+            const btn = document.getElementById('reextractBtn');
+            progressEl.classList.remove('hidden');
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            pollingInterval = setInterval(checkStatus, 3000);
+        }
+
+        function checkStatus() {
+            fetch('{{ route("face.training_status") }}')
+                .then(r => r.json())
+                .then(data => {
+                    const phase = data.phase || 'idle';
+                    const message = data.message || '';
+                    const current = data.current || 0;
+                    const total = data.total || 1;
+
+                    document.getElementById('trainingMessage').textContent = message;
+
+                    if (phase === 'extracting') {
+                        const pct = Math.round((current / total) * 70);
+                        document.getElementById('trainingBar').style.width = pct + '%';
+                        document.getElementById('trainingPhase').textContent = 'Extracting Frames...';
+                    } else if (phase === 'training') {
+                        document.getElementById('trainingBar').style.width = '85%';
+                        document.getElementById('trainingPhase').textContent = 'Training SVM...';
+                    } else if (phase === 'done') {
+                        document.getElementById('trainingBar').style.width = '100%';
+                        document.getElementById('trainingPhase').textContent = '✅ Selesai!';
+                        document.getElementById('trainingProgress').querySelector('div').className =
+                            'bg-emerald-50 border border-emerald-200 rounded-lg p-4';
+                        document.getElementById('trainingPhase').className = 'text-sm font-semibold text-emerald-800';
+                        document.getElementById('trainingMessage').className = 'text-xs text-emerald-600 mt-1.5';
+                        document.getElementById('trainingBar').className = 'bg-emerald-600 h-2.5 rounded-full transition-all duration-500';
+                        document.querySelector('#trainingProgress svg').classList.remove('animate-spin');
+                        stopPolling();
+                    } else if (phase === 'error') {
+                        document.getElementById('trainingPhase').textContent = '❌ Gagal';
+                        document.getElementById('trainingProgress').querySelector('div').className =
+                            'bg-red-50 border border-red-200 rounded-lg p-4';
+                        document.getElementById('trainingPhase').className = 'text-sm font-semibold text-red-800';
+                        document.getElementById('trainingMessage').className = 'text-xs text-red-600 mt-1.5';
+                        stopPolling();
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function stopPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+            const btn = document.getElementById('reextractBtn');
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
     </script>
 @endsection

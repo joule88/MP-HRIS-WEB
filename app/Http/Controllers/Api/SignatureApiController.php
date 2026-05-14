@@ -74,12 +74,9 @@ class SignatureApiController extends Controller
             return ApiResponse::notFound('Tanda tangan tidak ditemukan.');
         }
 
-        if ($ttd->file_ttd && Storage::disk('public')->exists($ttd->file_ttd)) {
-            Storage::disk('public')->delete($ttd->file_ttd);
-        }
+        // Jangan hapus file fisik dan record untuk menjaga integritas history surat
+        $ttd->update(['is_active' => false]);
 
-        $ttd->delete();
-
-        return ApiResponse::success(null, 'Tanda tangan berhasil dihapus.');
+        return ApiResponse::success(null, 'Tanda tangan berhasil dinonaktifkan.');
     }
 }
