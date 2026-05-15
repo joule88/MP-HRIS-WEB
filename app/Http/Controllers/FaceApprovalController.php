@@ -11,12 +11,21 @@ use App\Services\NotifikasiService;
 use App\Jobs\ReextractAllFrames;
 use App\Jobs\RetrainAllModels;
 use App\Jobs\MigrateExistingEmbeddings;
+use App\Services\FaceRecognitionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class FaceApprovalController extends Controller
 {
+    protected $faceService;
+
+    public function __construct(FaceRecognitionService $faceService)
+    {
+        $this->faceService = $faceService;
+    }
+
     public function index(Request $request)
     {
         $query = User::with(['jabatan', 'divisi', 'dataWajah']);
@@ -250,5 +259,27 @@ class FaceApprovalController extends Controller
     {
         dispatch(new MigrateExistingEmbeddings());
         return redirect()->back()->with('success', 'Proses migrasi embedding sedang berjalan di background. Anda akan menerima notifikasi setelah selesai.');
+    }
+
+    public function uploadVideo(Request $request, $id)
+    {
+        $request->validate([
+            'video_wajah' => 'required|file|mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/3gpp,video/x-matroska|max:51200',
+        ], [
+            'video_wajah.required' => 'File video wajah wajib diupload.',
+            'video_wajah.mimetypes' => 'Format video tidak didukung. Gunakan MP4, MOV, atau AVI.',
+            'video_wajah.max' => 'Ukuran video terlalu besar (maksimal 50MB).',
+        ]);
+
+        $user = User::findOrFail($id);
+
+        try {
+            $result = $this->faceService->enrollFace($user->id, $request->file('video_wajah'));
+
+            return redirect()->back()->with('success', "Video wajah untuk {$user->nama_lengkap} berhasil diupload. Proses ekstraksi frame sedang berjalan.");
+        } catch (\Exception $e) {
+            Log::error("Upload video wajah gagal untuk user {$id}: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal upload video: ' . $e->getMessage());
+        }
     }
 }

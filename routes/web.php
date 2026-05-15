@@ -125,6 +125,7 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::put('/face-approval/{id}/approve', [FaceApprovalController::class, 'approve'])->name('face.approve');
     Route::delete('/face-approval/{id}/reject', [FaceApprovalController::class, 'reject'])->name('face.reject');
     Route::delete('/face-approval/{id}/reset', [FaceApprovalController::class, 'reset'])->name('face.reset');
+    Route::post('/face-approval/{id}/upload-video', [FaceApprovalController::class, 'uploadVideo'])->name('face.upload_video');
 
     Route::resource('role', RoleController::class)->except(['create', 'edit']);
 });
