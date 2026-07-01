@@ -144,6 +144,10 @@
                                                 {{ substr($p->jam_jadwal_masuk, 0, 5) }}*
                                             </span>
                                         </div>
+                                    @elseif(!$p->jam_masuk)
+                                        <span class="font-mono font-bold text-slate-400">
+                                            --:--
+                                        </span>
                                     @else
                                         <span class="font-mono font-bold {{ $p->jam_masuk > $p->jam_jadwal_masuk ? 'text-red-600' : 'text-emerald-600' }}">
                                             {{ \Carbon\Carbon::parse($p->jam_masuk)->format('H:i') }}

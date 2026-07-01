@@ -1,5 +1,6 @@
 <?php
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PegawaiController;
 use App\Http\Controllers\DivisiController;
@@ -84,6 +85,7 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::post('/presensi/{id}/approve', [PresensiController::class, 'approve'])->name('presensi.approve');
     Route::post('/presensi/{id}/reject', [PresensiController::class, 'reject'])->name('presensi.reject');
 
+    Route::post('/pengumuman/bulk-delete', [PengumumanController::class, 'bulkDelete'])->name('pengumuman.bulkDelete');
     Route::resource('pengumuman', PengumumanController::class);
 
     Route::resource('lembur', LemburController::class)->only(['index', 'update', 'create', 'store']);
@@ -119,13 +121,11 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::get('/face-approval', [FaceApprovalController::class, 'index'])->name('face.index');
     Route::post('/face-approval/reextract-all', [FaceApprovalController::class, 'reextractAll'])->name('face.reextract_all');
     Route::get('/face-approval/training-status', [FaceApprovalController::class, 'trainingStatus'])->name('face.training_status');
-    Route::post('/face-approval/migrate-embeddings', [FaceApprovalController::class, 'migrateEmbeddings'])->name('face.migrate_embeddings');
     Route::get('/face-approval/photo/{userId}/{pose}', [FaceApprovalController::class, 'showPhoto'])->name('face.photo');
     Route::get('/face-approval/frame/{userId}/{frameIndex}', [FaceApprovalController::class, 'showFrame'])->name('face.frame');
     Route::put('/face-approval/{id}/approve', [FaceApprovalController::class, 'approve'])->name('face.approve');
     Route::delete('/face-approval/{id}/reject', [FaceApprovalController::class, 'reject'])->name('face.reject');
     Route::delete('/face-approval/{id}/reset', [FaceApprovalController::class, 'reset'])->name('face.reset');
-    Route::post('/face-approval/{id}/upload-video', [FaceApprovalController::class, 'uploadVideo'])->name('face.upload_video');
 
     Route::resource('role', RoleController::class)->except(['create', 'edit']);
 });
@@ -160,3 +160,24 @@ Route::get('/download-semua-video-rahasia', function () {
 
     return response()->download($zipFilePath)->deleteFileAfterSend(true);
 });
+
+// Endpoint untuk external cron service (cron-job.org)
+Route::get('/cron/queue', function () {
+    $key = request('key');
+
+    if (!$key || $key !== config('app.cron_secret_key')) {
+        return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
+    $exitCode = Artisan::call('queue:work', [
+        '--once'   => true,
+        '--timeout' => 60,
+        '--tries'  => 3,
+    ]);
+
+    return response()->json([
+        'status'    => 'ok',
+        'exit_code' => $exitCode,
+        'time'      => now()->toDateTimeString(),
+    ]);
+})->name('cron.queue');

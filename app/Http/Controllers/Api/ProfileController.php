@@ -36,7 +36,7 @@ class ProfileController extends Controller
                     Storage::disk('public')->delete($user->foto);
                 }
 
-                $path = $request->file('foto')->store('uploads/profil', 'public');
+                $path = $request->file('foto')->store('foto-profil', 'public');
                 $user->foto = $path;
             }
 

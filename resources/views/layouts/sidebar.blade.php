@@ -232,7 +232,7 @@
             </a>
             @endif
 
-            {{-- Lembur & Poin – HRD only --}}
+            {{-- Pengajuan Lembur – HRD only --}}
             @if($isHrd)
             <a href="{{ route('lembur.index') }}"
                 class="flex items-center px-4 py-3 rounded-xl transition-all duration-200 group {{ request()->routeIs('lembur.*') ? 'bg-[#130F26] text-white shadow-lg shadow-[#130F26]/30' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' }}">
@@ -242,7 +242,7 @@
                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
                     </path>
                 </svg>
-                <span class="flex-1 font-semibold text-sm">Lembur & Poin</span>
+                <span class="flex-1 font-semibold text-sm">Pengajuan Lembur</span>
                 @php
                     $lemburQuery = \App\Models\Lembur::where('id_status', \App\Enums\StatusPengajuan::PENDING);
                     if (!$isGlobalAdmin) { $lemburQuery->whereHas('user', fn($q) => $q->where('id_kantor', $userKantor)); }
@@ -290,7 +290,7 @@
 
         {{-- ════════════════════════════════ SEKSI: DATA MASTER (HRD only) ════════════════════════════════ --}}
         @if($isHrd)
-        <div x-data="{ open: {{ request()->routeIs('divisi.*', 'jabatan.*', 'kantor.*', 'role.*', 'shift.*', 'hari-libur.*', 'cuti.*') ? 'true' : 'false' }} }"
+        <div x-data="{ open: {{ request()->routeIs('divisi.*', 'jabatan.*', 'kantor.*', 'shift.*', 'hari-libur.*', 'cuti.*') ? 'true' : 'false' }} }"
             class="space-y-1">
 
             <button @click="open = !open"
@@ -331,10 +331,7 @@
                     Data Jabatan
                 </a>
 
-                <a href="{{ route('role.index') }}"
-                    class="block py-2.5 px-4 text-sm rounded-lg transition-all {{ request()->routeIs('role.*') ? 'bg-slate-100 text-[#130F26] font-bold border-l-4 border-[#130F26]' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50' }}">
-                    Data Role
-                </a>
+
 
                 <a href="{{ route('shift.index') }}"
                     class="block py-2.5 px-4 text-sm rounded-lg transition-all {{ request()->routeIs('shift.*') ? 'bg-slate-100 text-[#130F26] font-bold border-l-4 border-[#130F26]' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50' }}">

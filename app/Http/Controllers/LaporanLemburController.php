@@ -67,7 +67,7 @@ class LaporanLemburController extends Controller
               ->whereMonth('tanggal_lembur', $bulan)
               ->where('id_status', StatusPengajuan::DISETUJUI);
         }])
-        ->bukanHrd();
+        ->bukanSuperAdmin();
 
         if ($kantorId) {
             $query->where('id_kantor', $kantorId);

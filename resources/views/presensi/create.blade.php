@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Input Presensi Manual')
 
@@ -9,7 +9,7 @@
         <a href="{{ route('presensi.index') }}" class="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-slate-500">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
         </a>
-        <x-page-header title="Input Presensi Manual" subtitle="Catat kehadiran pegawai secara manual (Admin)" />
+        <x-page-header title="Input Presensi Manual" subtitle="Catat kehadiran pegawai secara manual (HRD/Admin)" />
     </div>
 
     @if(session('error'))

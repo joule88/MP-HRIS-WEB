@@ -72,7 +72,7 @@ class PengajuanIzinController extends Controller
         $usersQuery = User::with(['kantor', 'divisi', 'jabatan'])
             ->select('id', 'nama_lengkap', 'nik', 'id_kantor', 'id_divisi', 'id_jabatan')
             ->where('status_aktif', 1)
-            ->bukanHrd()
+            ->bukanSuperAdmin()
             ->orderBy('nama_lengkap', 'asc');
 
         if (!$isGlobalAdmin) {

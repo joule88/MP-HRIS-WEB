@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Administrator - HRIS MP</title>
+    <title>Login Portal HRD & Administrator - HRIS MP</title>
     
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
@@ -100,7 +100,7 @@
                 <div class="mb-8 text-center flex flex-col items-center">
                     <h2 class="text-3xl font-extrabold text-[#130F26] tracking-tight">Sign in</h2>
                     <p class="mt-2 text-sm text-slate-500">
-                        Masuk menggunakan akun administrator Anda.
+                        Masuk menggunakan akun HRD atau Administrator Anda.
                     </p>
                 </div>
 

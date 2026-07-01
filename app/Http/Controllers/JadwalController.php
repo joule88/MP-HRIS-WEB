@@ -30,7 +30,7 @@ class JadwalController extends Controller
             return $s;
         });
 
-        $pegawaiQuery = User::where('status_aktif', 1)->bukanHrd()->with(['kantor', 'jabatan']);
+        $pegawaiQuery = User::where('status_aktif', 1)->bukanSuperAdmin()->with(['kantor', 'jabatan']);
         if (!$isGlobalAdmin) {
             $pegawaiQuery->where('id_kantor', $user->id_kantor);
         }
@@ -213,7 +213,7 @@ class JadwalController extends Controller
         $kantor = $isGlobalAdmin ? Kantor::all() : Kantor::where('id_kantor', $user->id_kantor)->get();
         $divisi = Divisi::all();
 
-        $pegawaiQuery = User::where('status_aktif', 1)->bukanHrd()->with(['kantor', 'jabatan']);
+        $pegawaiQuery = User::where('status_aktif', 1)->bukanSuperAdmin()->with(['kantor', 'jabatan']);
         if (!$isGlobalAdmin) {
             $pegawaiQuery->where('id_kantor', $user->id_kantor);
         }

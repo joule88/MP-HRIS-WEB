@@ -38,7 +38,7 @@ class TukarShiftController extends Controller
 
     public function create()
     {
-        $pegawai = User::with('kantor')->bukanHrd()->get();
+        $pegawai = User::with('kantor')->bukanSuperAdmin()->get();
 
         $kantor = \App\Models\Kantor::orderBy('nama_kantor', 'asc')->get();
 

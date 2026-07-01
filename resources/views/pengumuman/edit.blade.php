@@ -15,8 +15,12 @@
                     <x-input label="Judul Pengumuman" name="judul" value="{{ old('judul', $pengumuman->judul) }}"
                         placeholder="Contoh: Libur Hari Raya" required />
 
-                    <x-date-input label="Tanggal Tayang" name="tanggal"
-                        value="{{ old('tanggal', $pengumuman->tanggal->format('Y-m-d')) }}" required />
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Tanggal Tayang</label>
+                        <div class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700">
+                            {{ $pengumuman->tanggal->translatedFormat('l, d F Y') }}
+                        </div>
+                    </div>
 
                     <x-textarea label="Isi Pengumuman" name="isi" value="{{ old('isi', $pengumuman->isi) }}"
                         placeholder="Tuliskan detail pengumuman di sini..." rows="5" required />

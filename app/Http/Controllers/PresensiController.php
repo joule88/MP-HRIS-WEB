@@ -124,6 +124,15 @@ class PresensiController extends Controller
             } elseif ($item->id_status == StatusPresensi::TEPAT_WAKTU) {
                 $item->status_keterlambatan = 'Tepat Waktu';
                 $item->badge_color = 'emerald';
+            } elseif ($item->id_status == StatusPresensi::IZIN) {
+                $item->status_keterlambatan = $item->alasan_telat ?? 'Izin / Cuti';
+                $item->badge_color = 'amber';
+            } elseif ($item->id_status == StatusPresensi::SAKIT) {
+                $item->status_keterlambatan = $item->alasan_telat ?? 'Sakit';
+                $item->badge_color = 'amber';
+            } elseif ($item->id_status == StatusPresensi::ALPHA) {
+                $item->status_keterlambatan = 'Alpha';
+                $item->badge_color = 'rose';
             }
 
             $item->validasi_label = $item->id_validasi == StatusValidasi::VALID ? 'Disetujui' : ($item->id_validasi == StatusValidasi::DITOLAK ? 'Ditolak' : 'Pending');
@@ -247,7 +256,7 @@ class PresensiController extends Controller
         $isGlobalAdmin = $user->isGlobalAdmin();
 
         $pegawaiQuery = \App\Models\User::with('divisi')
-            ->bukanHrd()
+            ->bukanSuperAdmin()
             ->orderBy('nama_lengkap', 'asc');
 
         if (!$isGlobalAdmin) {
@@ -256,7 +265,9 @@ class PresensiController extends Controller
 
         $pegawai = $pegawaiQuery->get();
 
-        $statuses = \Illuminate\Support\Facades\DB::table('status_presensi')->get();
+        $statuses = collect(\App\Enums\StatusPresensi::LABELS)->map(function ($label, $id) {
+            return (object) ['id_status' => $id, 'nama_status' => $label];
+        })->values();
 
         return view('presensi.create', compact('pegawai', 'statuses'));
     }
@@ -307,7 +318,9 @@ class PresensiController extends Controller
             abort(403, 'Anda tidak diizinkan mengedit presensi dari kantor lain.');
         }
 
-        $statuses = \Illuminate\Support\Facades\DB::table('status_presensi')->get();
+        $statuses = collect(\App\Enums\StatusPresensi::LABELS)->map(function ($label, $id) {
+            return (object) ['id_status' => $id, 'nama_status' => $label];
+        })->values();
 
         return view('presensi.edit', compact('presensi', 'statuses'));
     }
@@ -322,7 +335,7 @@ class PresensiController extends Controller
         }
 
         $request->validate([
-            'id_status' => 'required|exists:status_presensi,id_status',
+            'id_status' => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Enums\StatusPresensi::LABELS))],
             'jam_masuk' => [
                 \Illuminate\Validation\Rule::requiredIf(fn () => in_array($request->id_status, [StatusPresensi::TEPAT_WAKTU, StatusPresensi::TERLAMBAT])),
                 'nullable',

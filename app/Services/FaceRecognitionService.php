@@ -33,10 +33,10 @@ class FaceRecognitionService
 
         $existing = DB::table('data_wajah')->where('id_user', $userId)->first();
         if ($existing && $existing->is_verified == StatusVerifikasiWajah::APPROVED) {
-            if ($existing->face_embeddings !== null) {
+            if (($existing->jumlah_frame ?? 0) > 0) {
                 throw new \Exception('Wajah Anda sudah terverifikasi. Hubungi HRD untuk reset.', 400);
             }
-            Log::warning("User {$userId} is_verified=APPROVED tapi embedding kosong, izinkan re-enrollment.");
+            Log::warning("User {$userId} is_verified=APPROVED tapi data kosong, izinkan re-enrollment.");
         }
 
         $videoStoragePath = "face_videos/{$userId}";
@@ -51,14 +51,8 @@ class FaceRecognitionService
         DB::table('data_wajah')->updateOrInsert(
             ['id_user' => $userId],
             [
-                'path_model_yml' => null,
-                'path_model_pkl' => null,
-                'path_scaler_pkl' => null,
                 'path_video' => "{$videoStoragePath}/enrollment.mp4",
                 'jumlah_frame' => null,
-                'face_embeddings' => null,
-                'jumlah_embedding' => null,
-                'embedding_generated_at' => null,
                 'is_verified' => StatusVerifikasiWajah::PENDING,
                 'last_updated' => now(),
             ]

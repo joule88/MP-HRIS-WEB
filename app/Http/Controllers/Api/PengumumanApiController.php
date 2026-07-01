@@ -24,8 +24,8 @@ class PengumumanApiController extends Controller
                         'tanggal' => $item->tanggal?->format('Y-m-d'),
                         'foto_url' => $item->foto ? asset('storage/' . $item->foto) : null,
                         'lampiran_url' => $item->lampiran ? asset('storage/' . $item->lampiran) : null,
-                        'jabatan' => $item->pembuat?->jabatan?->nama_jabatan ?? 'Admin',
-                        'nama_pembuat' => $item->pembuat?->nama_lengkap ?? 'Admin',
+                        'jabatan' => $item->pembuat?->jabatan?->nama_jabatan ?? 'HRD',
+                        'nama_pembuat' => $item->pembuat?->nama_lengkap ?? 'HRD',
                         'avatar_url' => $item->pembuat?->foto,
                     ];
                 });
@@ -48,8 +48,8 @@ class PengumumanApiController extends Controller
                 'tanggal' => $item->tanggal?->format('Y-m-d'),
                 'foto_url' => $item->foto ? asset('storage/' . $item->foto) : null,
                 'lampiran_url' => $item->lampiran ? asset('storage/' . $item->lampiran) : null,
-                'jabatan' => $item->pembuat?->jabatan?->nama_jabatan ?? 'Admin',
-                'nama_pembuat' => $item->pembuat?->nama_lengkap ?? 'Admin',
+                'jabatan' => $item->pembuat?->jabatan?->nama_jabatan ?? 'HRD',
+                'nama_pembuat' => $item->pembuat?->nama_lengkap ?? 'HRD',
                 'avatar_url' => $item->pembuat?->foto,
             ], 'Detail pengumuman berhasil dimuat');
         } catch (\Exception $e) {

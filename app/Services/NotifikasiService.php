@@ -13,7 +13,7 @@ class NotifikasiService
     /**
      * Kirim notifikasi ke satu user.
      */
-    public function kirim(int $idUser, string $tipe, string $judul, string $pesan, array $data = []): void
+    public function kirim(int $idUser, string $tipe, string $judul, string $pesan, array $data = [], bool $sendFcm = true): void
     {
         try {
             Notifikasi::create([
@@ -28,8 +28,10 @@ class NotifikasiService
             $unreadCount = Notifikasi::where('id_user', $idUser)->where('is_read', false)->count();
             broadcast(new NotifikasiCreated($idUser, $judul, $pesan, $tipe, $unreadCount));
 
-            $data['tipe'] = $tipe;
-            \App\Jobs\SendFcmPushNotification::dispatch($idUser, $judul, $pesan, $data);
+            if ($sendFcm) {
+                $data['tipe'] = $tipe;
+                \App\Jobs\SendFcmPushNotification::dispatch($idUser, $judul, $pesan, $data);
+            }
         } catch (\Exception $e) {
             Log::error('NotifikasiService::kirim gagal: ' . $e->getMessage());
         }
@@ -46,7 +48,7 @@ class NotifikasiService
     /**
      * Kirim ke semua user dengan role tertentu (contoh: HRD, Manajer).
      */
-    public function kirimKeRole(string $namaRole, string $tipe, string $judul, string $pesan, array $data = []): void
+    public function kirimKeRole(string $namaRole, string $tipe, string $judul, string $pesan, array $data = [], bool $sendFcm = true): void
     {
         $users = User::where('status_aktif', 1)
             ->whereHas('roles', function ($q) use ($namaRole) {
@@ -55,7 +57,7 @@ class NotifikasiService
             ->pluck('id');
 
         foreach ($users as $idUser) {
-            $this->kirim($idUser, $tipe, $judul, $pesan, $data);
+            $this->kirim($idUser, $tipe, $judul, $pesan, $data, $sendFcm);
         }
     }
 

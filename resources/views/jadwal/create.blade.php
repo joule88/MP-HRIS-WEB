@@ -33,18 +33,24 @@
                 </div>
 
                 <div class="mb-6">
-                    <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
-                        <label class="block text-sm font-semibold text-slate-700">Pilih Pegawai</label>
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+                        <label class="block text-sm font-semibold text-slate-700 shrink-0">Pilih Pegawai</label>
 
-                        <div class="flex gap-2">
-                            <x-filter-select id="filter-kantor" class="py-1.5 text-xs">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <x-search-input
+                                id="search-pegawai"
+                                placeholder="Cari nama karyawan..."
+                                class="!w-48 lg:!w-48"
+                            />
+
+                            <x-filter-select id="filter-kantor" class="py-1.5 text-xs w-36">
                                 <option value="">Semua Kantor</option>
                                 @foreach($kantor as $k)
                                     <option value="{{ $k->id_kantor }}">{{ $k->nama_kantor }}</option>
                                 @endforeach
                             </x-filter-select>
 
-                            <x-filter-select id="filter-divisi" class="py-1.5 text-xs">
+                            <x-filter-select id="filter-divisi" class="py-1.5 text-xs w-36">
                                 <option value="">Semua Divisi</option>
                                 @foreach($divisi as $d)
                                     <option value="{{ $d->id_divisi }}">{{ $d->nama_divisi }}</option>
@@ -223,6 +229,7 @@
             const selectedCountEl = document.getElementById('selectedCount');
             const filterKantor = document.getElementById('filter-kantor');
             const filterDivisi = document.getElementById('filter-divisi');
+            const searchPegawai = document.getElementById('search-pegawai');
 
             if (!selectAllCheckbox) return;
 
@@ -234,26 +241,46 @@
                 selectedCountEl.textContent = count;
             }
 
+            function updateSelectAllState() {
+                const visibleCheckboxes = document.querySelectorAll('.pegawai-item:not(.hidden) .user-checkbox');
+                if (visibleCheckboxes.length === 0) {
+                    selectAllCheckbox.checked = false;
+                    return;
+                }
+                const allChecked = Array.from(visibleCheckboxes).every(cb => cb.checked);
+                selectAllCheckbox.checked = allChecked;
+            }
+
             function filterPegawai() {
                 const kantorId = filterKantor.value;
                 const divisiId = filterDivisi.value;
+                const searchQuery = searchPegawai ? searchPegawai.value.toLowerCase().trim() : '';
                 let visibleCount = 0;
 
                 pegawaiItems.forEach(item => {
                     const itemKantor = item.getAttribute('data-kantor');
                     const itemDivisi = item.getAttribute('data-divisi');
+                    
+                    const nameEl = item.querySelector('.font-medium');
+                    const nameText = nameEl ? nameEl.textContent.toLowerCase() : '';
 
                     let show = true;
                     if (kantorId && itemKantor !== kantorId) show = false;
                     if (divisiId && itemDivisi !== divisiId) show = false;
+                    if (searchQuery && !nameText.includes(searchQuery)) show = false;
 
                     if (show) {
                         item.classList.remove('hidden');
                         visibleCount++;
                     } else {
                         item.classList.add('hidden');
+                        const cb = item.querySelector('.user-checkbox');
+                        if (cb) cb.checked = false;
                     }
                 });
+
+                updateSelectAllState();
+                updateCount();
 
                 if (visibleCount === 0) {
                     pegawaiContainer.classList.add('hidden');
@@ -272,10 +299,12 @@
 
             if(filterKantor) filterKantor.addEventListener('change', filterPegawai);
             if(filterDivisi) filterDivisi.addEventListener('change', filterPegawai);
+            if(searchPegawai) searchPegawai.addEventListener('input', filterPegawai);
 
             if(pegawaiContainer) {
                 pegawaiContainer.addEventListener('change', function (e) {
                     if (e.target.classList.contains('user-checkbox')) {
+                        updateSelectAllState();
                         updateCount();
                     }
                 });

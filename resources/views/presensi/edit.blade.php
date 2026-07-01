@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Koreksi Presensi')
 
@@ -9,7 +9,7 @@
         <a href="{{ route('presensi.index', ['tanggal' => $presensi->tanggal]) }}" class="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-slate-500">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
         </a>
-        <x-page-header title="Koreksi Presensi" subtitle="Ubah data kehadiran pegawai secara manual (Admin)" />
+        <x-page-header title="Koreksi Presensi" subtitle="Ubah data kehadiran pegawai secara manual (HRD/Admin)" />
     </div>
 
     @if(session('error'))
@@ -67,7 +67,7 @@
 
                 <div class="space-y-1 md:col-span-2 mt-4">
                     <label class="block text-sm font-semibold text-slate-700">Catatan Koreksi (Wajib)</label>
-                    <textarea name="alasan_telat" rows="2" required class="w-full rounded-xl border-slate-300 shadow-sm focus:border-primary focus:ring focus:ring-primary/20 transition-all text-sm" placeholder="Contoh: Koreksi jam masuk karena admin salah input opsi cuti, dll.">{{ old('alasan_telat', $presensi->alasan_telat) }}</textarea>
+                    <textarea name="alasan_telat" rows="2" required class="w-full rounded-xl border-slate-300 shadow-sm focus:border-primary focus:ring focus:ring-primary/20 transition-all text-sm" placeholder="Contoh: Koreksi jam masuk karena HRD salah input opsi cuti, dll.">{{ old('alasan_telat', $presensi->alasan_telat) }}</textarea>
                     <p class="text-xs text-slate-500 mt-1">Status Validasi akan otomatis diset menjadi <strong>Disetujui</strong> setelah dikoreksi.</p>
                 </div>
                 

@@ -22,6 +22,8 @@ return [
 
     'key' => env('APP_KEY'),
 
+    'cron_secret_key' => env('CRON_SECRET_KEY', ''),
+
     'previous_keys' => [
         ...array_filter(
             explode(',', (string) env('APP_PREVIOUS_KEYS', ''))

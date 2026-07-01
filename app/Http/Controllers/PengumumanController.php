@@ -34,6 +34,7 @@ class PengumumanController extends Controller
     {
         $data = $request->validated();
         $data['dibuat_oleh'] = Auth::id();
+        $data['tanggal'] = now()->toDateString();
 
         if ($request->hasFile('foto')) {
             $data['foto'] = $request->file('foto')->store('uploads/pengumuman/foto', 'public');
@@ -106,6 +107,33 @@ class PengumumanController extends Controller
 
             return redirect()->route('pengumuman.index')
                 ->with('success', 'Pengumuman berhasil dihapus.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal menghapus pengumuman: ' . $e->getMessage());
+        }
+    }
+
+    public function bulkDelete(\Illuminate\Http\Request $request)
+    {
+        try {
+            $ids = $request->input('ids');
+            if (empty($ids) || !is_array($ids)) {
+                return redirect()->back()->with('error', 'Tidak ada pengumuman yang dipilih.');
+            }
+
+            $pengumumanList = Pengumuman::whereIn('id_pengumuman', $ids)->get();
+
+            foreach ($pengumumanList as $pengumuman) {
+                if ($pengumuman->foto) {
+                    Storage::disk('public')->delete($pengumuman->foto);
+                }
+                if ($pengumuman->lampiran) {
+                    Storage::disk('public')->delete($pengumuman->lampiran);
+                }
+                $pengumuman->delete();
+            }
+
+            return redirect()->route('pengumuman.index')
+                ->with('success', 'Pengumuman yang dipilih berhasil dihapus.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Gagal menghapus pengumuman: ' . $e->getMessage());
         }

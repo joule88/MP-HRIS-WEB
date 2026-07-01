@@ -17,13 +17,7 @@
                 </svg>
             </form>
 
-            <button x-data @click="$dispatch('open-modal', 'create-role')"
-                class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition text-sm font-medium shadow-lg shadow-primary/30">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                Tambah
-            </button>
+
         </x-page-header>
 
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -73,39 +67,13 @@
                         </td>
                     </tr>
                 @empty
-                    <x-empty-state colspan="4" message="Belum ada data role" hint="Silakan tambahkan role baru." />
+                    <x-empty-state colspan="4" message="Belum ada data role" hint="Role akan tersedia setelah seeder dijalankan." />
                 @endforelse
             </x-table>
             <x-pagination :paginator="$roles" />
         </div>
     </div>
 
-    <x-modal name="create-role" title="Tambah Role Baru">
-        <form action="{{ route('role.store') }}" method="POST">
-            @csrf
-            <div class="mb-4">
-                <x-input label="Nama Role" name="nama_role" placeholder="Contoh: Administrator" required />
-            </div>
-
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-slate-700 mb-2">Hak Akses (Permissions)</label>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 p-4 bg-slate-50 rounded-xl border border-slate-200 max-h-60 overflow-y-auto custom-scrollbar">
-                    @foreach($allPermissions as $permission)
-                        <div class="p-2 hover:bg-white rounded-lg transition-colors">
-                            <x-checkbox name="id_permissions[]" value="{{ $permission->id_permission }}" label="{{ $permission->nama_permission }}" />
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-
-            <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-2">
-                <button type="button" x-data @click="$dispatch('close-modal', 'create-role')"
-                    class="px-4 py-2 text-sm border rounded-xl hover:bg-slate-50">Batal</button>
-                <button type="submit"
-                    class="px-4 py-2 text-sm bg-primary text-white rounded-xl hover:bg-primary/90">Simpan</button>
-            </div>
-        </form>
-    </x-modal>
 
     <x-modal name="edit-role" title="Edit Role">
         <form id="editForm" method="POST">

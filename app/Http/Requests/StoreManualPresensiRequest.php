@@ -26,7 +26,7 @@ class StoreManualPresensiRequest extends FormRequest
         return [
             'id_user' => 'required|exists:users,id',
             'tanggal' => 'required|date',
-            'id_status' => 'required|exists:status_presensi,id_status',
+            'id_status' => ['required', Rule::in(array_keys(\App\Enums\StatusPresensi::LABELS))],
             'jam_masuk' => [
                 Rule::requiredIf(fn () => in_array($this->id_status, [1, 2])),
                 'nullable',

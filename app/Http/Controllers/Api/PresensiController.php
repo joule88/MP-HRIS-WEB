@@ -235,8 +235,8 @@ class PresensiController extends Controller
                         $statusMasuk = 'Sakit';
                     } elseif ($item->id_status != null && $item->id_status != StatusPresensi::TEPAT_WAKTU && $item->id_status != StatusPresensi::TERLAMBAT) {
 
-                        $statusStatus = \DB::table('status_presensi')->where('id_status', $item->id_status)->value('nama_status');
-                        if ($statusStatus) {
+                        $statusStatus = \App\Enums\StatusPresensi::label($item->id_status);
+                        if ($statusStatus !== 'Unknown') {
                             $statusMasuk = $statusStatus;
                         }
                     }

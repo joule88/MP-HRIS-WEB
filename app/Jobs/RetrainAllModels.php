@@ -72,9 +72,11 @@ class RetrainAllModels implements ShouldQueue, ShouldBeUnique
 
             app(\App\Services\NotifikasiService::class)->kirimKeRole(
                 'hrd',
-                'pengumuman',
+                'training',
                 'Training Model Selesai',
-                "Sistem telah berhasil memperbarui model AI Face Recognition untuk {$totalUsers} karyawan."
+                "Sistem telah berhasil memperbarui model AI Face Recognition untuk {$totalUsers} karyawan.",
+                [],
+                false
             );
 
         } catch (\Exception $e) {
@@ -87,9 +89,11 @@ class RetrainAllModels implements ShouldQueue, ShouldBeUnique
             
             app(\App\Services\NotifikasiService::class)->kirimKeRole(
                 'hrd',
-                'pengumuman',
+                'training',
                 'Training Model Gagal',
-                'Terjadi kesalahan saat melatih ulang model AI. Silakan cek log server.'
+                'Terjadi kesalahan saat melatih ulang model AI. Silakan cek log server.',
+                [],
+                false
             );
         }
     }

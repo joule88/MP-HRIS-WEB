@@ -14,6 +14,7 @@ class NotifikasiApiController extends Controller
     public function index(Request $request)
     {
         $notifikasi = Notifikasi::forUser(Auth::id())
+            ->whereNotIn('tipe', ['training'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
@@ -22,7 +23,10 @@ class NotifikasiApiController extends Controller
 
     public function unreadCount()
     {
-        $count = Notifikasi::forUser(Auth::id())->unread()->count();
+        $count = Notifikasi::forUser(Auth::id())
+            ->whereNotIn('tipe', ['training'])
+            ->unread()
+            ->count();
         return ApiResponse::success(['count' => $count]);
     }
 
@@ -35,7 +39,10 @@ class NotifikasiApiController extends Controller
 
     public function markAllAsRead()
     {
-        Notifikasi::forUser(Auth::id())->unread()->update(['is_read' => true]);
+        Notifikasi::forUser(Auth::id())
+            ->whereNotIn('tipe', ['training'])
+            ->unread()
+            ->update(['is_read' => true]);
         return ApiResponse::success(null, 'Semua notifikasi ditandai sudah dibaca.');
     }
 

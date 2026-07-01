@@ -134,9 +134,11 @@ class ReextractAllFrames implements ShouldQueue
 
         app(\App\Services\NotifikasiService::class)->kirimKeRole(
             'hrd',
-            'pengumuman',
+            'training',
             'Sync & Retrain Selesai',
-            "Sync frame selesai (Extract: {$extractCount}, Skip: {$skipCount}, Gagal: {$failCount}). Model SVM sedang di-training ulang."
+            "Sync frame selesai (Extract: {$extractCount}, Skip: {$skipCount}, Gagal: {$failCount}). Model SVM sedang di-training ulang.",
+            [],
+            false
         );
     }
 }

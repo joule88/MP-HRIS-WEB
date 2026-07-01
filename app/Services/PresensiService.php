@@ -64,6 +64,10 @@ class PresensiService
 
     public function absenMasuk($user, $request)
     {
+        if (!$user->is_face_registered || !$user->dataWajah || $user->dataWajah->is_verified != StatusVerifikasiWajah::APPROVED) {
+            throw new \Exception('Presensi ditolak. Wajah Anda belum terdaftar atau belum disetujui/diverifikasi oleh HRD.', 403);
+        }
+
         $hariIni = Carbon::today('Asia/Jakarta')->toDateString();
         $jamSekarang = Carbon::now('Asia/Jakarta');
 
@@ -180,6 +184,10 @@ class PresensiService
 
     public function absenPulang($user, $request)
     {
+        if (!$user->is_face_registered || !$user->dataWajah || $user->dataWajah->is_verified != StatusVerifikasiWajah::APPROVED) {
+            throw new \Exception('Presensi ditolak. Wajah Anda belum terdaftar atau belum disetujui/diverifikasi oleh HRD.', 403);
+        }
+
         $jamSekarang = Carbon::now('Asia/Jakarta');
 
         $presensi = Presensi::where('id_user', $user->id)

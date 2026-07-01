@@ -157,10 +157,10 @@ class User extends Authenticatable
         return $this->hasMany(Notifikasi::class, 'id_user', 'id');
     }
 
-    public function scopeBukanHrd($query)
+    public function scopeBukanSuperAdmin($query)
     {
         return $query->whereDoesntHave('roles', function ($q) {
-            $q->where('nama_role', 'hrd');
+            $q->where('nama_role', 'super_admin');
         });
     }
 }

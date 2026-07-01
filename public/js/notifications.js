@@ -1,3 +1,5 @@
+const APP_BASE_URL = document.querySelector('meta[name="app-url"]')?.content || '';
+
 function initSweetAlerts() {
     const swalData = document.getElementById('swal-data');
     const flashError = document.querySelector('.flash-data-error');
@@ -91,7 +93,7 @@ document.addEventListener('DOMContentLoaded', initSweetAlerts);
         const badge = document.getElementById('notif-badge');
         if (!badge) return; // User tidak punya akses notifikasi, hentikan tanpa fetch
 
-        fetch('/notifikasi/unread-count', {
+        fetch(APP_BASE_URL + '/notifikasi/unread-count', {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
         })
         .then(r => {
@@ -129,7 +131,7 @@ function notifDropdown() {
 
         loadRecent() {
             this.loading = true;
-            fetch('/notifikasi/recent', {
+            fetch(APP_BASE_URL + '/notifikasi/recent', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
             })
             .then(r => r.json())
@@ -143,7 +145,7 @@ function notifDropdown() {
 
         readItem(item) {
             if (!item.is_read) {
-                fetch('/notifikasi/' + item.id + '/read', {
+                fetch(APP_BASE_URL + '/notifikasi/' + item.id + '/read', {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -159,7 +161,7 @@ function notifDropdown() {
         },
 
         markAllRead() {
-            fetch('/notifikasi/read-all', {
+            fetch(APP_BASE_URL + '/notifikasi/read-all', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,

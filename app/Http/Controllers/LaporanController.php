@@ -162,7 +162,7 @@ class LaporanController extends Controller
 
         $pegawaiQuery = User::with(['jabatan', 'divisi'])
             ->where('status_aktif', 1)
-            ->bukanHrd()
+            ->bukanSuperAdmin()
             ->select('id', 'nama_lengkap', 'nik', 'id_jabatan', 'id_divisi')
             ->orderBy('nama_lengkap', 'asc');
 

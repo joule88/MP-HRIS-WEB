@@ -33,3 +33,22 @@ _ide_helper_models.php
 # Research notebooks & scripts
 *.ipynb
 /notebook_face_recognition.py
+
+# Dokumen laporan TA (bukan bagian kode)
+/laporan_revisi_text.txt
+/proposal_text.txt
+/proposal_images/
+
+# Script utility sementara
+/extract_images.py
+/map_images.py
+/read_docx.py
+
+# Folder hosting upload (tidak perlu di repo)
+/_hosting_upload/
+
+# Storage zip backup
+/storage/app/laravel_storage_public.zip
+
+# Direktori aneh Windows (symlink error)
+/public/%SystemDrive%/
